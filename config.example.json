@@ -1,0 +1,12 @@
+{
+  "videoPaths": [
+    {
+      "name": "Videos",
+      "path": "~/Movies"
+    },
+    {
+      "name": "Downloads",
+      "path": "~/Downloads"
+    }
+  ]
+}
