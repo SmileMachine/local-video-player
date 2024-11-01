@@ -6,21 +6,21 @@ import { logger } from '../utils/logger.js'
 const router = express.Router()
 const config = useConfig()
 
-// 创建响应式引用
-const videoList = ref(config.getVideos())
+// // 创建响应式引用
+// const videoList = ref(config.getVideos())
 
-// 监听配置更新
-config.onUpdate((newVideos) => {
-  videoList.value = newVideos
-})
+// // 监听配置更新
+// config.onUpdate((newVideos) => {
+//   videoList.value = newVideos
+// })
 
-// 使用响应式值
-videoList.subscribe((newVideos, oldVideos) => {
-  // logger.info(newVideos)
-})
+// // 使用响应式值
+// videoList.subscribe((newVideos, oldVideos) => {
+//   logger.info(newVideos, "videos.json")
+// })
 
 router.get('/videos', (req, res) => {
-  res.json(videoList.value)
+  res.json(config.getVideos())
 })
 
 export default router

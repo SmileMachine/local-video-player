@@ -2,21 +2,30 @@ import chalk from "chalk";
 import path from "path";
 import moment from "moment";
 import util from "util";
+import fs from "fs";
 
 class Logger {
   static _log(message, options = {}) {
+    if (options.file) {
+      // dump json to file
+      const logsDir = path.join(process.cwd(), "logs");
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir);
+      }
+      const fmessage = JSON.stringify(message, null, 2);
+      const filePath = path.join(logsDir, `${options.file}`);
+      fs.writeFileSync(filePath, fmessage);
+      return;
+    } 
     const formattedMessage =
-      // typeof message === "object"
-      // ?
       util.inspect(message, {
         depth: null, // 完全展开所有层级
         colors: true, // 启用颜色
-        // maxArrayLength: null, // 显示数组的所有元素
+        maxArrayLength: null, // 显示数组的所有元素
         compact: false, // 漂亮的多行输出
       });
-    // : message;
     const stack = new Error().stack;
-    const callerLine = stack.split("\n")[3];
+    const callerLine = stack.split("\n")[3]; // 3rd line is the caller
     const match = callerLine.match(/\((.+)\)/) || callerLine.match(/at (.+)/);
     const location = match ? match[1] : "unknown location";
 
@@ -24,14 +33,10 @@ class Logger {
     const locationInfo = chalk.cyan(`[${this.formatLocation(location)}]`);
     const level = options.level ? chalk.magenta(`[${options.level}]`) : "";
     const context = options.context ? chalk.yellow(`[${options.context}]`) : "";
-    if (options.file) {
-      // dump json to file
-      fs.writeFileSync(options.file, formattedMessage);
-    } else {
-      console.log(
-        `${timestamp} ${locationInfo} ${level} ${context} ${formattedMessage}`
-      );
-    }
+
+    console.log(
+      `${timestamp} ${locationInfo} ${level} ${context} ${formattedMessage}`
+    );
   }
 
   static formatLocation(location) {

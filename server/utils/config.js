@@ -50,6 +50,7 @@ class ConfigManager extends EventEmitter {
       }
     }
 
+    logger.info(`Scaned ${results.length} videos`);
     return results;
   }
 
