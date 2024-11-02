@@ -2,6 +2,7 @@ import { VideoScanner } from "../utils/videoScanner.js";
 import { useConfig } from "../utils/config.js";
 import { EventEmitter } from "events";
 import { logger } from "../utils/logger.js";
+import moment from "moment";
 import path from "path";
 import fs from "fs";
 
@@ -49,7 +50,7 @@ class VideoLibrary extends EventEmitter {
 
   async handleConfigUpdate() {
     const config = (await useConfig()).getConfig();
-    const { videoPaths = [], usePathIds = true} = config;
+    const { videoPaths = [], usePathIds = true } = config;
     this.videoScanner = new VideoScanner({
       cacheName: config.cacheName,
       getDuration: config.getDuration ?? true,
@@ -63,6 +64,7 @@ class VideoLibrary extends EventEmitter {
     const results = [];
 
     const startTime = Date.now();
+    logger.info(`Scanning ${videoPaths.length} video paths...`);
     for (const { path: videoPath, name } of videoPaths) {
       try {
         // Convert ~ to user home directory
@@ -78,6 +80,11 @@ class VideoLibrary extends EventEmitter {
           if (result) {
             result.name = name;
             results.push(result);
+            logger.info(
+              `${name.padStart(19)} : ${result.videoCount
+                .toString()
+                .padStart(4)} videos found.`
+            );
           }
         }
       } catch (error) {
@@ -86,19 +93,18 @@ class VideoLibrary extends EventEmitter {
     }
 
     // log stats
-    const timeElapsed = Date.now() - startTime;
+    const timeElapsed = ((ms) => {
+      return moment
+        .utc(ms)
+        .format(ms >= 60000 ? "m [m] s.SSS [s]" : "s.SSS [s]");
+    })(Date.now() - startTime);
     const videoCount = results.reduce(
       (sum, result) => sum + (result.videoCount ?? 1),
       0
     );
-    const totalDuration = results.reduce(
-      (sum, result) => sum + (result.duration ?? 0),
-      0
-    );
     logger.info(
-      `Scaned ${videoCount} videos in ${results.length} directories in ${timeElapsed}ms.`
+      `Scaned ${videoCount} videos in ${results.length} directories in ${timeElapsed}.`
     );
-    logger.info(`Total duration: ${totalDuration}`);
     return results;
   }
 

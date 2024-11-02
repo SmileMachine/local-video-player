@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 8080,
+    hmr: {
+      port: 8081,
+    },
   },
   resolve: {
     alias: {

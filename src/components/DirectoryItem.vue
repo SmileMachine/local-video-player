@@ -18,13 +18,15 @@
       <div class="tooltip-title">{{ item.name }}</div>
       <div class="tooltip-content">
         <template v-if="isDirectory">
-          <div>文件数: {{ fileCount }}</div>
-          <div>总时长: {{ formatDuration(totalDuration) }}</div>
+          <div><span class="label">文件数</span>{{ item.videoCount }}</div>
+          <div><span class="label">总时长</span>{{ formatDuration(item.duration) }}</div>
+          <div><span class="label">总大小</span>{{ formatSize(item.size) }}</div>
+          <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
         </template>
         <template v-else>
-          <div>时长: {{ formatDuration(item.duration) }}</div>
-          <div>大小: {{ formatSize(item.size) }}</div>
-          <div>修改时间: {{ formatDate(item.mtime) }}</div>
+          <div><span class="label">时长</span>{{ formatDuration(item.duration) }}</div>
+          <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
+          <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
         </template>
       </div>
     </div>
@@ -33,6 +35,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import moment from 'moment'
 
 export default {
   name: 'DirectoryItem',
@@ -54,33 +57,6 @@ export default {
 
     const isDirectory = computed(() => props.item.type === 'directory')
 
-    // 计算文件夹内的统计信息
-    const fileCount = computed(() => {
-      if (!isDirectory.value) return 0
-      let count = 0
-      const countFiles = (items) => {
-        items.forEach(item => {
-          if (item.type === 'file') count++
-          else if (item.children) countFiles(item.children)
-        })
-      }
-      countFiles(props.item.children || [])
-      return count
-    })
-
-    const totalDuration = computed(() => {
-      if (!isDirectory.value) return props.item.duration || 0
-      let total = 0
-      const sumDuration = (items) => {
-        items.forEach(item => {
-          if (item.type === 'file') total += item.duration || 0
-          else if (item.children) sumDuration(item.children)
-        })
-      }
-      sumDuration(props.item.children || [])
-      return total
-    })
-
     const showTooltip = (event) => {
       const rect = event.currentTarget.getBoundingClientRect()
       tooltipStyle.value = {
@@ -96,14 +72,7 @@ export default {
 
     const formatDuration = (seconds) => {
       if (!seconds) return '0:00'
-      const hours = Math.floor(seconds / 3600)
-      const minutes = Math.floor((seconds % 3600) / 60)
-      const remainingSeconds = Math.floor(seconds % 60)
-
-      if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-      }
-      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+      return moment.utc(seconds * 1000).format(seconds >= 3600 ? 'HH:mm:ss' : 'm:ss')
     }
 
     const formatSize = (bytes) => {
@@ -119,7 +88,7 @@ export default {
     }
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleString()
+      return moment(dateString).format('YYYY-MM-DD HH:mm:ss')
     }
 
     const toggleExpand = () => {
@@ -133,8 +102,6 @@ export default {
     return {
       isExpanded,
       isDirectory,
-      fileCount,
-      totalDuration,
       showingTooltip,
       tooltipStyle,
       showTooltip,
@@ -242,9 +209,17 @@ export default {
 .tooltip-content {
   font-size: 12px;
   line-height: 1.4;
+  text-align: left;
 }
 
 .tooltip-content>div {
   margin: 2px 0;
+}
+
+.label {
+  display: inline-block;
+  width: 5em;  /* 或者使用 8ch */
+  text-align: right;
+  padding-right: 1em;
 }
 </style>

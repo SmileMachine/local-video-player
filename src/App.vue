@@ -1,19 +1,24 @@
 <template>
   <div class="app-container">
+    <!-- Playlist -->
     <div class="playlist" :style="{ width: isSidebarCollapsed ? '0px' : sidebarWidth + 'px' }">
+      <!-- Toggle Button -->
       <button class="toggle-button" :class="{ 'outside': isSidebarCollapsed }" @click="handleToggleClick">
-        <span v-if="isSidebarCollapsed">▶</span>
-        <span v-else>◀</span>
+        <span v-if="isSidebarCollapsed"> > </span>
+        <span v-else> < </span>
       </button>
+      <!-- Playlist Content -->
       <div class="playlist-content" :style="{ padding: isSidebarCollapsed ? '0px' : '20px' }">
-        <!-- <h2>播放列表</h2> -->
+        <!-- Directory Tree -->
         <div class="directory-tree">
           <DirectoryItem v-for="item in videos" :key="item.id" :item="item" :currentPath="currentVideoPath"
             @select-video="selectVideo" />
         </div>
       </div>
     </div>
+    <!-- Resizer -->
     <div v-if="!isSidebarCollapsed" class="resizer" @mousedown="startResize" @dblclick="resetWidth"></div>
+    <!-- Video Player -->
     <div class="video-player">
       <video id="video-player" ref="playerRef" :src="currentVideoUrl" playsinline>
         <source :src="currentVideoUrl" type="video/mp4" />
@@ -39,13 +44,13 @@ export default {
     const videos = ref([])
     const currentVideoPath = ref('')
 
-    // 计算当前视频的URL
+    // Calculate current video URL
     const currentVideoUrl = computed(() => {
       if (!currentVideoPath.value) return ''
       return `/video?id=${encodeURIComponent(currentVideoPath.value)}`
     })
 
-    // 从服务器获取视频列表
+    // Fetch videos from server
     const fetchVideos = async () => {
       try {
         const response = await fetch('/api/videos')
