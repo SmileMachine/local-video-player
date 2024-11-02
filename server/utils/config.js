@@ -5,53 +5,38 @@ import { VideoScanner } from "./videoScanner.js";
 import { logger } from "./logger.js";
 
 class ConfigManager extends EventEmitter {
+  static #instance;
+  #initialized = false;
+
+  static async getInstance() {
+    if (!this.#instance) {
+      this.#instance = new ConfigManager();
+      await this.#instance.init();
+    }
+    return this.#instance;
+  }
+
   constructor() {
     super();
-    this.videos = [];
+    this.config = {};
     this.configPath = path.resolve("config.json");
-    this.videoScanner = new VideoScanner();
-    this.load();
+  }
+
+  async init() {
+    if (this.#initialized) return;
+    await this.load();
     this.watchConfig();
+    this.#initialized = true;
   }
 
   async load() {
     try {
       const configData = fs.readFileSync(this.configPath, "utf8");
-      const { videoPaths = [] } = JSON.parse(configData);
-      this.videos = await this.scanVideoPaths(videoPaths);
-      this.emit("updated", this.videos);
-      return this.videos;
+      this.config = JSON.parse(configData);
+      this.emit("updated", this.config);
     } catch (error) {
       console.error("Error loading video config:", error);
-      return [];
     }
-  }
-
-  async scanVideoPaths(videoPaths) {
-    const results = [];
-
-    for (const { path: videoPath, name } of videoPaths) {
-      try {
-        const expandedPath = videoPath.replace(
-          /^~/,
-          process.env.HOME || process.env.USERPROFILE
-        );
-        const resolvedPath = path.resolve(expandedPath);
-
-        if (fs.existsSync(resolvedPath)) {
-          const result = await this.videoScanner.scanPath(resolvedPath);
-          if (result) {
-            result.name = name
-            results.push(result);
-          }
-        }
-      } catch (error) {
-        console.error(`Error scanning path ${videoPath}:`, error);
-      }
-    }
-
-    logger.info(`Scaned ${results.length} videos`);
-    return results;
   }
 
   watchConfig() {
@@ -97,16 +82,16 @@ class ConfigManager extends EventEmitter {
     });
   }
 
-  getVideos() {
-    return this.videos;
+  getConfig() {
+    return this.config;
   }
 }
 
-const configManager = new ConfigManager();
-
-export const useConfig = () => {
+// 使用方式
+export const useConfig = async () => {
+  const configManager = await ConfigManager.getInstance();
   return {
-    getVideos: () => configManager.getVideos(),
+    getConfig: () => configManager.getConfig(),
     onUpdate: (callback) => configManager.on("updated", callback),
   };
 };

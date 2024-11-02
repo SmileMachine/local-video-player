@@ -8,7 +8,7 @@
       <div class="playlist-content" :style="{ padding: isSidebarCollapsed ? '0px' : '20px' }">
         <!-- <h2>播放列表</h2> -->
         <div class="directory-tree">
-          <DirectoryItem v-for="item in videos" :key="item.path" :item="item" :currentPath="currentVideoPath"
+          <DirectoryItem v-for="item in videos" :key="item.id" :item="item" :currentPath="currentVideoPath"
             @select-video="selectVideo" />
         </div>
       </div>
@@ -42,7 +42,7 @@ export default {
     // 计算当前视频的URL
     const currentVideoUrl = computed(() => {
       if (!currentVideoPath.value) return ''
-      return `/video?path=${encodeURIComponent(currentVideoPath.value)}`
+      return `/video?id=${encodeURIComponent(currentVideoPath.value)}`
     })
 
     // 从服务器获取视频列表
@@ -285,6 +285,7 @@ body.resizing::after {
   right: 10px;
   background: rgba(255, 255, 255, 0.1);
   border: none;
+  outline: none;
   color: white;
   cursor: pointer;
   font-size: 16px;
@@ -293,6 +294,11 @@ body.resizing::after {
   border-radius: 4px;
   transition: all 0.3s;
   backdrop-filter: blur(2px);
+}
+
+.toggle-button:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .toggle-button:hover {

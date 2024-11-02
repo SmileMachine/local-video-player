@@ -22,7 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+*.timestamp-*.mjs
 
 # Config
 config.json
@@ -37,6 +37,10 @@ config.json
 # But keep example files
 !.env.example
 
+# Video files
 *.mp4
 *.mkv
 *.mov
+
+# Cache
+cache

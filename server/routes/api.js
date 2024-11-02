@@ -1,26 +1,17 @@
-import express from 'express'
-import { ref } from '../utils/reactive.js'
-import { useConfig } from '../utils/config.js'
-import { logger } from '../utils/logger.js'
+import { Router } from "express";
+import { useVideoLibrary } from "../services/videoLibrary.js";
+import { logger } from "../utils/logger.js";
 
-const router = express.Router()
-const config = useConfig()
+const router = Router();
+const { getSecureVideos, onUpdate } = useVideoLibrary();
 
-// // 创建响应式引用
-// const videoList = ref(config.getVideos())
+let videos = {};
+onUpdate(() => {
+  videos = getSecureVideos();
+});
 
-// // 监听配置更新
-// config.onUpdate((newVideos) => {
-//   videoList.value = newVideos
-// })
+router.get("/videos", (req, res) => {
+  res.json(videos);
+});
 
-// // 使用响应式值
-// videoList.subscribe((newVideos, oldVideos) => {
-//   logger.info(newVideos, "videos.json")
-// })
-
-router.get('/videos', (req, res) => {
-  res.json(config.getVideos())
-})
-
-export default router
+export default router;

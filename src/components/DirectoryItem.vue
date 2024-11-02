@@ -1,36 +1,20 @@
 <template>
-  <div 
-    class="directory-item" 
-    :class="{ 'is-directory': isDirectory }"
-  >
-    <div 
-      class="item-header" 
-      @click="isDirectory ? toggleExpand() : handleSelect()"
-      :class="{ 'active': !isDirectory && item.path === currentPath }"
-      @mouseenter.stop="showTooltip"
-      @mouseleave.stop="hideTooltip"
-    >
+  <div class="directory-item" :class="{ 'is-directory': isDirectory }">
+    <div class="item-header" @click="isDirectory ? toggleExpand() : handleSelect()"
+      :class="{ 'active': !isDirectory && item.id === currentPath }" @mouseenter.stop="showTooltip"
+      @mouseleave.stop="hideTooltip">
       <span class="icon">{{ isDirectory ? (isExpanded ? '📂' : '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
       <span v-if="!isDirectory" class="duration">{{ formatDuration(item.duration) }}</span>
     </div>
-    
+
     <div v-if="isDirectory && isExpanded" class="children">
-      <DirectoryItem
-        v-for="child in item.children"
-        :key="child.path"
-        :item="child"
-        :currentPath="currentPath"
-        @select-video="$emit('select-video', $event)"
-      />
+      <DirectoryItem v-for="child in item.children" :key="child.path" :item="child" :currentPath="currentPath"
+        @select-video="$emit('select-video', $event)" />
     </div>
 
     <!-- 悬浮提示 -->
-    <div 
-      v-if="showingTooltip" 
-      class="tooltip show"
-      :style="tooltipStyle"
-    >
+    <div v-if="showingTooltip" class="tooltip show" :style="tooltipStyle">
       <div class="tooltip-title">{{ item.name }}</div>
       <div class="tooltip-content">
         <template v-if="isDirectory">
@@ -67,7 +51,7 @@ export default {
     const isExpanded = ref(false)
     const showingTooltip = ref(false)
     const tooltipStyle = ref({})
-    
+
     const isDirectory = computed(() => props.item.type === 'directory')
 
     // 计算文件夹内的统计信息
@@ -115,7 +99,7 @@ export default {
       const hours = Math.floor(seconds / 3600)
       const minutes = Math.floor((seconds % 3600) / 60)
       const remainingSeconds = Math.floor(seconds % 60)
-      
+
       if (hours > 0) {
         return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
       }
@@ -143,7 +127,7 @@ export default {
     }
 
     const handleSelect = () => {
-      emit('select-video', props.item.path)
+      emit('select-video', props.item.id)
     }
 
     return {
@@ -208,7 +192,7 @@ export default {
   margin-left: 10px;
 }
 
-.is-directory > .item-header {
+.is-directory>.item-header {
   font-weight: 500;
 }
 
@@ -260,7 +244,7 @@ export default {
   line-height: 1.4;
 }
 
-.tooltip-content > div {
+.tooltip-content>div {
   margin: 2px 0;
 }
-</style> 
+</style>

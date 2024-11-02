@@ -1,8 +1,33 @@
-# Vue 3 + Vite
+# Video Player
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+[中文文档](./README.zh-CN.md)
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+A simple video player built with Vue 3, Vite and Express.
 
+You can specify the path to your local video folder in the configuration, and access it through the browser after starting the service.
 
-ffprobe is needed to get the video info.
+## Getting Started
+
+1. Configure environment variables in `.env`
+
+   | Variable   | Default       | Description                                                                    |
+   | ---------- | ------------- | ------------------------------------------------------------------------------ |
+   | `PORT`     | `3000`        | Server port                                                                    |
+   | `HOST`     | `localhost`   | Address to bind to                                                             |
+   | `NODE_ENV` | `development` | Environment. Can be either `development` or `production`                       |
+   | `DURATION` | `true`        | Whether to fetch video duration. May take a long time if there are many videos |
+
+2. Install dependencies, build frontend, and start server
+
+   ```bash
+   npm install
+   npm run build
+   npm run start
+   ```
+
+3. Development mode, using Vite for frontend and Express for backend, both with hot reload
+
+   ```bash
+   npm install
+   npm run dev
+   ```

@@ -1,4 +1,7 @@
 {
+  "cacheName": "video-info",
+  "usePathIds": true,
+  "getDuration": true,
   "videoPaths": [
     {
       "name": "Videos",

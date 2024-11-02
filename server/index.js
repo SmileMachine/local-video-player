@@ -3,13 +3,14 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import 'dotenv/config'  // 自动加载 .env 文件
+import "dotenv/config"; // Load .env file
 
+import config from "./config/server.js";
 import videoRouter from "./routes/video.js";
 import apiRouter from "./routes/api.js";
 import { setupVite } from "./config/vite.js";
 import { loggerMiddleware } from "./middleware/logger.js";
-import config from "./config/server.js";
+import { logger } from "./utils/logger.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -19,16 +20,17 @@ const host = config.host;
 const isDev = config.nodeEnv === "development";
 
 async function createServer() {
+  // Enable cors
   app.use(cors());
 
-  // 挂载路由
+  // Mount the routes
   app.use("/video", videoRouter);
   app.use("/api", apiRouter);
 
-  // 设置 Vite
+  // Setup Vite
   await setupVite(app, isDev);
 
-  // SPA 路由处理
+  // SPA route handling
   app.get("*", loggerMiddleware, (req, res) => {
     if (isDev) {
       res.sendFile(path.join(__dirname, "../index.html"));
@@ -37,8 +39,9 @@ async function createServer() {
     }
   });
 
+  // Start the server
   app.listen(port, () => {
-    console.log(`Server running at http://${host}:${port}`);
+    logger.info(`Server running at http://${host}:${port}`);
   });
 }
 

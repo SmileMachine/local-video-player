@@ -1,13 +1,9 @@
 {
   "watch": [
-    "server/",
-    "config.json"
+    "server/"
   ],
   "ext": "js,json",
   "ignore": ["node_modules/"],
   "exec": "node server/index.js",
-  "colours": true,
-  "events": {
-    "restart": "osascript -e 'display notification \"App restarted due to:\n'$FILENAME'\" with title \"nodemon\"'"
-  }
+  "colours": true
 }

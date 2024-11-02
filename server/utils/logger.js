@@ -7,7 +7,7 @@ import fs from "fs";
 class Logger {
   static _log(message, options = {}) {
     if (options.file) {
-      // dump json to file
+      // dump json to `logs/$file` dir
       const logsDir = path.join(process.cwd(), "logs");
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir);
@@ -16,20 +16,26 @@ class Logger {
       const filePath = path.join(logsDir, `${options.file}`);
       fs.writeFileSync(filePath, fmessage);
       return;
-    } 
-    const formattedMessage =
-      util.inspect(message, {
-        depth: null, // 完全展开所有层级
-        colors: true, // 启用颜色
-        maxArrayLength: null, // 显示数组的所有元素
-        compact: false, // 漂亮的多行输出
-      });
+    }
+    const formattedMessage = util.inspect(message, {
+      depth: null, // Unfold all levels
+      colors: true, // Enable colors
+      maxArrayLength: null, // Show all elements of the array
+      compact: false, // Pretty multi-line output
+    });
     const stack = new Error().stack;
-    const callerLine = stack.split("\n")[3]; // 3rd line is the caller
+    // Error
+    //   at Logger._log (/video-player/server/utils/logger.js:26:19)
+    //   at Object.info (/video-player/server/utils/logger.js:70:12)
+    //   at Server.<anonymous> (/video-player/server/index.js:44:12)
+    // 4th line is the caller
+    const callerLine = stack.split("\n")[3];
     const match = callerLine.match(/\((.+)\)/) || callerLine.match(/at (.+)/);
     const location = match ? match[1] : "unknown location";
 
-    const timestamp = chalk.gray(`[${moment().format("YYYY-MM-DD HH:mm:ss")}]`);
+    const timestamp = chalk.gray(
+      `[${moment().format("YYYY-MM-DD HH:mm:ss.SSS")}]`
+    );
     const locationInfo = chalk.cyan(`[${this.formatLocation(location)}]`);
     const level = options.level ? chalk.magenta(`[${options.level}]`) : "";
     const context = options.context ? chalk.yellow(`[${options.context}]`) : "";
@@ -55,6 +61,7 @@ class Logger {
   }
 }
 
+// If file is provided, the message will be dumped to `logs/$file` dir
 export const logger = {
   error: (message, file) => {
     Logger._log(message, { level: chalk.red("ERROR"), file });
