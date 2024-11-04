@@ -3,6 +3,7 @@ import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { logger } from "./logger.js";
 import { Cache } from "./cache.js";
+import { createProgressBar } from "./progressBar.js";
 
 export class VideoScanner {
   // options: { cacheName: string, getDuration: boolean }
@@ -11,6 +12,11 @@ export class VideoScanner {
     this.supportedExtensions = [".mp4", ".webm", ".mkv", ".avi", ".mov"];
     this.getDuration = options.getDuration ?? true;
     this.cache = new Cache(this.getDuration ? options.cacheName : null);
+    this.cacheHit = 0;
+    this.cacheMiss = 0;
+    this.totalFiles = 0;
+    this.processedFiles = 0;
+    this.progressBar = null;
   }
 
   async getVideoDuration(filePath) {
@@ -22,8 +28,10 @@ export class VideoScanner {
 
     // Check if the duration is cached
     if (this.cache.get(cacheKey)) {
+      this.cacheHit++;
       return this.cache.get(cacheKey);
     }
+    this.cacheMiss++;
 
     // If not cached, get the duration
     return new Promise((resolve, reject) => {
@@ -48,6 +56,37 @@ export class VideoScanner {
     return this.supportedExtensions.includes(ext);
   }
 
+  // 统计总文件数
+  countFiles(dirPath) {
+    let count = 0;
+    const items = fs.readdirSync(dirPath);
+
+    for (const item of items) {
+      const fullPath = path.join(dirPath, item);
+      try {
+        const stats = fs.statSync(fullPath);
+        if (stats.isDirectory() && !item.startsWith(".")) {
+          count += this.countFiles(fullPath);
+        } else if (this.isVideoFile(fullPath)) {
+          count++;
+        }
+      } catch (error) {
+        logger.warn(`Error counting file ${fullPath}: ${error.message}`);
+      }
+    }
+    return count;
+  }
+
+  // 更新进度
+  updateProgress(currentFile) {
+    this.processedFiles++;
+    if (this.progressBar) {
+      this.progressBar.update(this.processedFiles, {
+        filename: path.basename(currentFile),
+      });
+    }
+  }
+
   async scanPath(currentPath) {
     try {
       const stats = fs.statSync(currentPath);
@@ -61,6 +100,7 @@ export class VideoScanner {
 
       if (this.isVideoFile(currentPath)) {
         const duration = await this.getVideoDuration(currentPath);
+        this.updateProgress(currentPath);
         return {
           ...baseInfo,
           size: stats.size,
@@ -118,12 +158,42 @@ export class VideoScanner {
   }
 
   // Wrapper for scanPath so that we can save the cache
-  async scan(path) {
+  async scan(dirPath) {
     try {
-      const result = await this.scanPath(path);
+      // 统计文件总数
+      this.totalFiles = this.countFiles(dirPath);
+      this.processedFiles = 0;
+
+      // 创建进度条
+      this.progressBar = createProgressBar({
+        total: this.totalFiles,
+        format:
+          "Scanning |{bar}| {percentage}% | {processedFiles}/{totalFiles} files | {filename}",
+      });
+
+      const startTime = Date.now();
+      const result = await this.scanPath(dirPath);
+      const timeElapsed = ((Date.now() - startTime) / 1000).toFixed(3);
+
+      // 完成进度条
+      this.progressBar.stop();
+
+      // 输出统计信息
+      const cacheHitRate =
+        (this.cacheHit / (this.cacheHit + this.cacheMiss)) * 100;
+      logger.info(
+        `videos: ${this.totalFiles
+          .toString()
+          .padStart(4)}, time: ${timeElapsed}s, cache: ${cacheHitRate.toFixed(
+          2
+        )}% in ${path.basename(dirPath)}`
+      );
       this.cache.save();
       return result;
     } catch (error) {
+      if (this.progressBar) {
+        this.progressBar.stop();
+      }
       logger.error(`Error in scan: ${error}`);
       return null;
     }

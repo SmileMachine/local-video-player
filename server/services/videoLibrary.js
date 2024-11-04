@@ -80,11 +80,6 @@ class VideoLibrary extends EventEmitter {
           if (result) {
             result.name = name;
             results.push(result);
-            logger.info(
-              `${name.padStart(19)} : ${result.videoCount
-                .toString()
-                .padStart(4)} videos found.`
-            );
           }
         }
       } catch (error) {
@@ -105,6 +100,12 @@ class VideoLibrary extends EventEmitter {
     logger.info(
       `Scaned ${videoCount} videos in ${results.length} directories in ${timeElapsed}.`
     );
+    const cacheHitRate =
+      (this.videoScanner.cacheHit /
+        (this.videoScanner.cacheHit + this.videoScanner.cacheMiss)) *
+      100;
+    logger.info(`Cache hit rate: ${cacheHitRate.toFixed(2)}%`);
+
     return results;
   }
 
