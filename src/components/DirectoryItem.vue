@@ -8,10 +8,12 @@
       <span class="duration">{{ formatDuration(item.duration) }}</span>
     </div>
 
-    <div v-if="isDirectory && isExpanded" class="children">
-      <DirectoryItem v-for="child in item.children" :path="path.concat(child.name)" :item="child" :currentId="currentId"
-        :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
-    </div>
+    <Transition name="expand">
+      <div v-if="isDirectory && isExpanded" class="children">
+        <DirectoryItem v-for="child in item.children" :path="path.concat(child.name)" :item="child" :currentId="currentId"
+          :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+      </div>
+    </Transition>
 
     <ItemTooltip v-if="showingTooltip" :item="item" :style="tooltipStyle" />
   </div>
@@ -158,5 +160,30 @@ export default {
 
 .is-directory>.item-header {
   font-weight: 500;
+}
+
+/* Animation when expand or collapse */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.4s ease;
+  max-height: 1000px; /* Set a large enough value */
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0.5;
+}
+
+.expand-enter-to,
+.expand-leave-from {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* Ensure the child container has a transition effect */
+.children {
+  overflow: hidden;
 }
 </style>
