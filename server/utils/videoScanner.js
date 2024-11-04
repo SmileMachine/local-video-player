@@ -58,7 +58,7 @@ export class VideoScanner {
     const ext = path.extname(filePath).toLowerCase();
     return this.supportedExtensions.includes(ext);
   }
-
+  
   // Multithreaded file counting, hope it's faster
   async countFiles(dirPath, isRoot = true) {
     try {
@@ -67,7 +67,7 @@ export class VideoScanner {
         this.countedFiles = 0;
         this.countedDirs = 0;
         this.countProgressBar = createProgressBar({
-          format: 'Counting |{bar}| {countedFiles} files, {countedDirs} dirs | Current: {currentPath}',
+          format: 'Counting | {countedFiles} files, {countedDirs} dirs | Current: {currentPath}',
           noTotalFormat: true,  // 不显示总数和百分比
           clearOnComplete: true
         });

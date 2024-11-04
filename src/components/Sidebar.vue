@@ -42,7 +42,7 @@ export default {
 
     onMounted(() => {
       window.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
+        if (event.key === 'Enter' && event.shiftKey) {
           handleToggleClick(event)
         }
       })
@@ -59,7 +59,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style>
 /* 添加分隔条样式 */
 .resizer {
   width: 5px;

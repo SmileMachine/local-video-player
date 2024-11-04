@@ -79,7 +79,8 @@ export default {
 
     const formatDuration = (seconds) => {
       if (!seconds) return '0:00'
-      return moment.utc(seconds * 1000).format(seconds >= 3600 ? 'HH:mm:ss' : 'm:ss')
+      const hours = Math.floor(seconds / 3600)
+      return moment.utc(seconds * 1000).format(hours > 0 ? `${hours}:mm:ss` : 'mm:ss')
     }
 
     watch(() => props.currentPath, () => {
