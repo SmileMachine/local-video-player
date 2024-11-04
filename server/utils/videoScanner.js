@@ -17,6 +17,9 @@ export class VideoScanner {
     this.totalFiles = 0;
     this.processedFiles = 0;
     this.progressBar = null;
+    this.countedFiles = 0;
+    this.countedDirs = 0;
+    this.countProgressBar = null;
   }
 
   async getVideoDuration(filePath) {
@@ -56,32 +59,80 @@ export class VideoScanner {
     return this.supportedExtensions.includes(ext);
   }
 
-  // 统计总文件数
-  countFiles(dirPath) {
-    let count = 0;
-    const items = fs.readdirSync(dirPath);
-
-    for (const item of items) {
-      const fullPath = path.join(dirPath, item);
-      try {
-        const stats = fs.statSync(fullPath);
-        if (stats.isDirectory() && !item.startsWith(".")) {
-          count += this.countFiles(fullPath);
-        } else if (this.isVideoFile(fullPath)) {
-          count++;
-        }
-      } catch (error) {
-        logger.warn(`Error counting file ${fullPath}: ${error.message}`);
+  // Multithreaded file counting, hope it's faster
+  async countFiles(dirPath, isRoot = true) {
+    try {
+      // 如果是根目录，初始化进度条
+      if (isRoot) {
+        this.countedFiles = 0;
+        this.countedDirs = 0;
+        this.countProgressBar = createProgressBar({
+          format: 'Counting |{bar}| {countedFiles} files, {countedDirs} dirs | Current: {currentPath}',
+          noTotalFormat: true,  // 不显示总数和百分比
+          clearOnComplete: true
+        });
+        this.countProgressBar.start(100, 0); // 使用虚拟总数
       }
+
+      const items = await fs.promises.readdir(dirPath);
+      this.countedDirs++;
+      this.updateCountProgress(dirPath);
+      
+      const counts = await Promise.all(
+        items.map(async (item) => {
+          const fullPath = path.join(dirPath, item);
+          try {
+            const stats = await fs.promises.stat(fullPath);
+            if (stats.isDirectory() && !item.startsWith(".")) {
+              return this.countFiles(fullPath, false);
+            }
+            if (this.isVideoFile(fullPath)) {
+              this.countedFiles++;
+              // wait for 1ms
+              this.updateCountProgress(fullPath);
+              return 1;
+            }
+            return 0;
+          } catch (error) {
+            logger.warn(`Error counting file ${fullPath}: ${error.message}`);
+            return 0;
+          }
+        })
+      );
+      
+      const total = counts.reduce((sum, count) => sum + count, 0);
+
+      // 如果是根调用，停止进度条
+      if (isRoot) {
+        this.countProgressBar.stop();
+        logger.info(`Found ${this.countedFiles} video files in ${this.countedDirs} directories`);
+      }
+
+      return total;
+    } catch (error) {
+      logger.error(`Error counting files in ${dirPath}: ${error.message}`);
+      if (isRoot) {
+        this.countProgressBar?.stop();
+      }
+      return 0;
     }
-    return count;
+  }
+
+  updateCountProgress(currentPath) {
+    if (this.countProgressBar) {
+      this.countProgressBar.update(50, {  // 使用固定值，因为我们不知道总数
+        countedFiles: this.countedFiles,
+        countedDirs: this.countedDirs,
+        currentPath: path.basename(currentPath)
+      });
+    }
   }
 
   // 更新进度
   updateProgress(currentFile) {
     this.processedFiles++;
     if (this.progressBar) {
-      this.progressBar.update(this.processedFiles, {
+      this.progressBar.updatep(this.processedFiles, {
         filename: path.basename(currentFile),
       });
     }
@@ -99,8 +150,8 @@ export class VideoScanner {
       };
 
       if (this.isVideoFile(currentPath)) {
-        const duration = await this.getVideoDuration(currentPath);
         this.updateProgress(currentPath);
+        const duration = await this.getVideoDuration(currentPath);
         return {
           ...baseInfo,
           size: stats.size,
@@ -161,14 +212,16 @@ export class VideoScanner {
   async scan(dirPath) {
     try {
       // 统计文件总数
-      this.totalFiles = this.countFiles(dirPath);
+      this.totalFiles = await this.countFiles(dirPath);
       this.processedFiles = 0;
+      const cacheHit = this.cacheHit;
+      const cacheMiss = this.cacheMiss;
 
       // 创建进度条
       this.progressBar = createProgressBar({
         total: this.totalFiles,
         format:
-          "Scanning |{bar}| {percentage}% | {processedFiles}/{totalFiles} files | {filename}",
+          "Scanning |{bar}| {percentage}% | {processedFiles}/{totalFiles} files ETA:{eta}s | {filename}",
       });
 
       const startTime = Date.now();
@@ -180,7 +233,9 @@ export class VideoScanner {
 
       // 输出统计信息
       const cacheHitRate =
-        (this.cacheHit / (this.cacheHit + this.cacheMiss)) * 100;
+        ((this.cacheHit - cacheHit) /
+          (this.cacheHit + this.cacheMiss - cacheMiss - cacheHit)) *
+        100;
       logger.info(
         `videos: ${this.totalFiles
           .toString()
