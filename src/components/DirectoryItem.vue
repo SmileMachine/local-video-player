@@ -1,6 +1,6 @@
 <template>
   <div class="directory-item" :class="{ 'is-directory': isDirectory }">
-    <div class="item-header" @click="isDirectory ? toggleExpand() : handleSelect()"
+    <div class="item-header" @click="isDirectory ? toggleExpand() : handleSelect()" ref="itemRef"
       :class="{ 'active': !isDirectory && item.id === currentId }" @mouseenter.stop="showTooltip"
       @mouseleave.stop="hideTooltip">
       <span class="icon">{{ isDirectory ? (isExpanded ? '📂' : '📁') : '🎬' }}</span>
@@ -48,6 +48,7 @@ export default {
     const isExpanded = ref(false)
     const showingTooltip = ref(false)
     const tooltipStyle = ref({})
+    const itemRef = ref(null)
 
     const isDirectory = computed(() => props.item.type === 'directory')
 
@@ -87,6 +88,15 @@ export default {
       }
     }, { immediate: true })
 
+    watch(() => props.currentId, (newId) => {
+      if (!props.isDirectory && newId === props.item.id && itemRef.value) {
+        itemRef.value.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+      }
+    }, { immediate: true })
+
     return {
       isExpanded,
       isDirectory,
@@ -96,7 +106,8 @@ export default {
       hideTooltip,
       toggleExpand,
       handleSelect,
-      formatDuration
+      formatDuration,
+      itemRef
     }
   }
 }
