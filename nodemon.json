@@ -3,7 +3,7 @@
     "server/"
   ],
   "ext": "js,json",
-  "ignore": ["node_modules/"],
+  "ignore": ["node_modules/", "*.test.js"],
   "exec": "node server/index.js",
   "colours": true
 }

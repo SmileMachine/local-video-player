@@ -1,37 +1,78 @@
-import cliProgress from 'cli-progress';
-import colors from 'ansi-colors';
+import cliProgress from "cli-progress";
 
 export function createProgressBar(options) {
   const bar = new cliProgress.SingleBar({
-    format: options.noTotalFormat 
-      ? options.format  // 使用自定义格式
-      : `${options.format}`, // 默认格式包含总数和百分比
-    barCompleteChar: '\u2588',
-    barIncompleteChar: '\u2591',
+    // from grey-scale preset
+    barCompleteChar: "\u2588",
+    barIncompleteChar: "\u2591",
     hideCursor: true,
     clearOnComplete: true,
     stopOnComplete: true,
-    ...options
+    ...options,
   });
 
-  bar.start(options.total, 0, {
-    filename: 'Starting...',
-    processedFiles: 0,
-    totalFiles: options.total,
-    countedFiles: 0,
-    countedDirs: 0,
-    currentPath: ''
+  return bar;
+}
+
+// accumulative, options not used
+export function createScanProgressBar() {
+  const bar = createProgressBar({
+    format:
+      "Scanning | {scannedFiles} files, {scannedDirs} dirs, {videosFound} videos found | Current: {currentDir}",
   });
 
-  // 包装更新方法
+  bar.start(100, 0, {
+    scannedFiles: 0,
+    scannedDirs: 0,
+    videosFound: 0,
+    currentDir: "",
+  });
+
   const originalUpdate = bar.update.bind(bar);
-  bar.updatep = (current, payload = {}) => {
+  // payload:
+  // - scannedFiles
+  // - scannedDirs
+  // - videosFound
+  // - currentDir
+  bar.update = (current, payload = {}) => {
     originalUpdate(current, {
-      processedFiles: current,
-      totalFiles: options.total,
-      ...payload
+      scannedFiles: current,
+      ...payload,
     });
   };
 
   return bar;
-} 
+}
+
+// options: total
+export function createInfoProgressBar(options) {
+  const bar = createProgressBar({
+    format:
+      "Getting info |{bar}| {percentage}% | {processedFiles}/{totalFiles} files ETA:{eta}s | {filename}",
+  });
+
+  bar.start(options.total, 0, {
+    filename: "",
+    processedFiles: 0,
+    totalFiles: options.total,
+  });
+
+  const originalUpdate = bar.update.bind(bar);
+  // payload:
+  // - filename
+  // - processedFiles (current)
+  bar.update = (current, payload = {}) => {
+    originalUpdate(current, {
+      processedFiles: current,
+      ...payload,
+    });
+  };
+
+  return bar;
+}
+
+export const mockProgressBar = {
+  start: () => {},
+  update: () => {},
+  stop: () => {},
+};

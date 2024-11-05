@@ -5,6 +5,7 @@ import { logger } from "../utils/logger.js";
 import moment from "moment";
 import path from "path";
 import fs from "fs";
+import os from "os";
 
 class VideoLibrary extends EventEmitter {
   constructor() {
@@ -68,10 +69,7 @@ class VideoLibrary extends EventEmitter {
     for (const { path: videoPath, name } of videoPaths) {
       try {
         // Convert ~ to user home directory
-        const expandedPath = videoPath.replace(
-          /^~/,
-          process.env.HOME || process.env.USERPROFILE
-        );
+        const expandedPath = videoPath.replace(/^~/, os.homedir());
         const resolvedPath = path.resolve(expandedPath);
 
         // read one video path (recursively)

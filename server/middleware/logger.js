@@ -1,7 +1,8 @@
 import chalk from "chalk";
+import moment from "moment";
 
 export const loggerMiddleware = (req, res, next) => {
-  const timestamp = chalk.gray(`[${new Date().toISOString()}]`);
+  const timestamp = chalk.gray(`[${moment().format("YYYY-MM-DD HH:mm:ss.SSS")}]`);
   const method = colorizeMethod(req.method);
   const decodedUrl = decodeURIComponent(req.url);
   const url = chalk.blue(decodedUrl);
