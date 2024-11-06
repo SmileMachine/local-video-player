@@ -2,16 +2,27 @@ import Plyr from "plyr";
 
 export default class PlyrAdapter {
   constructor(options) {
-    this.player = new Plyr({
-      container: options.container,
-      screenshot: true,
-      video: { url: "" },
-      subtitle: { url: "", fontSize: "25px", bottom: "7%" },
-      volume: 1,
+    this.player = new Plyr(options.container, {
+      controls: [
+        "play",
+        "progress",
+        "current-time",
+        "duration",
+        "captions",
+        "settings",
+        "mute",
+        "volume",
+        "fullscreen",
+      ],
+      settings: ["captions", "speed"],
+      captions: { active: true, language: "zh", update: false },
+      keyboard: { global: true },
+      seekTime: 5,
+      listeners: { dblclick: false },
     });
 
     this.player.on("timeupdate", () => {
-      options.onTimeUpdate?.(this.player.video.currentTime);
+      options.onTimeUpdate?.(this.player.currentTime);
     });
 
     this.player.on("ended", () => {
@@ -20,10 +31,26 @@ export default class PlyrAdapter {
   }
 
   setSource(videoInfo) {
-    this.player.template.subtrack.src = videoInfo.captionUrl;
-    this.player.switchVideo({
-      url: videoInfo.videoUrl,
-    });
+    this.player.source = {
+      type: "video",
+      sources: [
+        {
+          src: videoInfo.videoUrl,
+          type: "video/mp4",
+        },
+      ],
+      tracks: videoInfo.captionExists
+        ? [
+            {
+              kind: "captions",
+              label: "中文",
+              srclang: "zh",
+              src: videoInfo.captionUrl,
+              default: true,
+            },
+          ]
+        : [],
+    };
   }
 
   play() {
@@ -35,15 +62,15 @@ export default class PlyrAdapter {
   }
 
   getCurrentTime() {
-    return this.player.video.currentTime;
+    return this.player.currentTime;
   }
 
   setCurrentTime(time) {
-    this.player.seek(time);
+    this.player.currentTime = time;
   }
 
   isPlaying() {
-    return !this.player.video.paused;
+    return this.player.playing;
   }
 
   destroy() {
@@ -51,6 +78,6 @@ export default class PlyrAdapter {
   }
 
   once(event, callback) {
-    this.player.on(event, callback);
+    this.player.once(event, callback);
   }
 }

@@ -1,8 +1,7 @@
 <template>
   <div class="app-container">
     <Sidebar :videos="videos" :current-id="currentVideoId" :current-path="currentPath" @select-video="selectVideo" />
-    <VideoPlayer player-type="DPlayer" />
-    <!-- <VideoPlayer player-type="Plyr" /> -->
+    <VideoPlayer :player-type="playerType" />
   </div>
 </template>
 
@@ -25,8 +24,11 @@ export default {
       selectVideo,
     } = useVideoLibrary()
 
+    const playerType = import.meta.env.VITE_PLAYER_TYPE || "Plyr"
+
     return {
       // video library
+      playerType,
       videos,
       currentVideoId,
       currentPath,

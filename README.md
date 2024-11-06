@@ -18,7 +18,7 @@ You can specify the path to your local video folder in the configuration, and ac
    | `HOST`     | `localhost`   | Address to bind to                                                             |
    | `NODE_ENV` | `development` | Environment. Can be either `development` or `production`                       |
    | `DURATION` | `true`        | Whether to fetch video duration. May take a long time if there are many videos. `ffmpeg` is needed. |
-
+   | `PLAYER_TYPE` | `Plyr` | Player type. Can be either `DPlayer` or `Plyr` |
 2. Install dependencies, build frontend, and start server
 
    ```bash
