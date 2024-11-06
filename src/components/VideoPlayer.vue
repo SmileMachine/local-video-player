@@ -67,8 +67,8 @@ export default {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
     }
 
-    onMounted(() => {
-      player = createPlayer(props.playerType, {
+    onMounted(async () => {
+      player = await createPlayer(props.playerType, {
         container: document.getElementById('video-player'),
         // Save the playback position when the video is playing
         onTimeUpdate: () => {
