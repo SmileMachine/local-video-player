@@ -67,7 +67,6 @@ export class VideoScanner {
         }
 
         const duration = parseFloat(metadata.format.duration);
-        logger.debug(`duration: ${duration}`);
         // Save to cache
         this.cache.set(cacheKey, duration);
         resolve(duration);
@@ -171,6 +170,11 @@ export class VideoScanner {
 
       result.children = await Promise.all(
         videoData.children.map((item) => this.enrichWithDurations(item, bar))
+      );
+
+      result.duration = result.children.reduce(
+        (sum, child) => sum + (child.duration ?? 0),
+        0
       );
 
       return result;

@@ -1,5 +1,7 @@
 # Video Player
 
+[![wakatime](https://wakatime.com/badge/user/a70e5791-db6f-4368-aacc-0332a969bb3e/project/a99f84bc-1c1e-4629-aa5a-b06273fa67d9.svg)](https://wakatime.com/badge/user/a70e5791-db6f-4368-aacc-0332a969bb3e/project/a99f84bc-1c1e-4629-aa5a-b06273fa67d9)
+
 这个项目是一个简单的视频播放器，使用 Vue 3，Vite 和 Express 构建。
 
 可以在配置中填写本地的视频文件夹地址，启动服务后即可在浏览器中访问。
@@ -13,7 +15,7 @@
    | `PORT`     | `3000`        | 服务端口                                                 |
    | `HOST`     | `localhost`   | 想要绑定的地址                                           |
    | `NODE_ENV` | `development` | 环境。可以是 `development` 或 `production`               |
-   | `DURATION` | `true`        | 是否获取视频时长。如果视频文件很多，则可能需要很长时间。 |
+   | `DURATION` | `true`        | 是否获取视频时长。如果视频文件很多，则可能需要很长时间。 需要 `ffmpeg` 支持。 |
 
 2. 配置服务端运行选项
 
