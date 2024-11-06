@@ -1,8 +1,8 @@
 <template>
   <div class="app-container">
     <Sidebar :videos="videos" :current-id="currentVideoId" :current-path="currentPath" @select-video="selectVideo" />
-    <!-- Video Player -->
-    <VideoPlayer />
+    <VideoPlayer player-type="DPlayer" />
+    <!-- <VideoPlayer player-type="Plyr" /> -->
   </div>
 </template>
 

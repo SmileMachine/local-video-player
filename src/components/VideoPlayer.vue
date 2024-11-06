@@ -1,28 +1,34 @@
 <template>
   <div class="video-player">
-    <video id="video-player" ref="playerRef" playsinline>
+    <video v-if="playerType === 'Plyr'" id="video-player" ref="playerRef" playsinline>
       <source type="video/mp4" />
     </video>
+    <div v-else id="video-player" ref="playerRef">
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, watch, toRaw} from 'vue'
-import Plyr from 'plyr'
-import 'plyr/dist/plyr.css'
+import { ref, onMounted, onUnmounted, computed, watch, toRaw } from 'vue'
+import { createPlayer } from '../players/playerFactory'
 import { useVideoLibrary } from '../composables/useVideoLibrary'
 
 export default {
   name: 'VideoPlayer',
-  setup() {
+  props: {
+    playerType: {
+      type: String,
+      default: 'DPlayer',
+      validator: (value) => ['DPlayer', 'Plyr'].includes(value)
+    }
+  },
+  setup(props) {
     let player = null
     const playerRef = ref(null)
     const firstPlay = ref(true)
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
-
-    const currentVideoUrl = ref(null)
 
     const { currentVideoInfo } = useVideoLibrary()
 
@@ -62,62 +68,21 @@ export default {
     }
 
     onMounted(() => {
-      player = new Plyr('#video-player', {
-        controls: [
-          'play',
-          'progress',
-          'current-time',
-          'duration',
-          'captions',
-          'settings',
-          'mute',
-          'volume',
-          'fullscreen',
-        ],
-        settings: [
-          'captions',
-          'speed'
-        ],
-        captions: {
-          active: true,
-          language: 'zh',
-          update: false
+      player = createPlayer(props.playerType, {
+        container: document.getElementById('video-player'),
+        // Save the playback position when the video is playing
+        onTimeUpdate: () => {
+          console.log('onTimeUpdate')
+          // If is playing
+          if (player.isPlaying() && currentVideoInfo.value.videoUrl) {
+            saveVideoTime(currentVideoInfo.value.videoUrl, player.getCurrentTime())
+          }
         },
-        keyboard: { global: true },
-        seekTime: 5,
-        listeners: {
-          dblclick: false
-        },
-      })
-
-      player.source = {
-        type: 'video',
-      }
-
-      // Save the playback position when the video is playing
-      player.on('timeupdate', () => {
-        // If is playing
-        if (player.playing && currentVideoInfo.value.videoUrl) {
-          saveVideoTime(currentVideoInfo.value.videoUrl, player.currentTime)
+        onEnded: () => {
+          saveVideoTime(currentVideoInfo.value.videoUrl, 0)
         }
       })
-      // Reset the playback time when the video is ended
-      player.on('ended', () => {
-        saveVideoTime(currentVideoInfo.value.videoUrl, 0)
-      })
     })
-
-    const playVideo = () => {
-      if (firstPlay.value) {
-        firstPlay.value = false
-        console.log('First Play:', currentVideoInfo.value.videoUrl)
-      } else {
-        console.log('Trying to play:', currentVideoInfo.value.videoUrl)
-        player.play().catch(error => {
-          console.log('Failed to play:', error)
-        })
-      }
-    }
 
     const handleReady = () => {
       // Set the saved playback position
@@ -130,15 +95,18 @@ export default {
         if (timeElapsed.value > MAX_ATTEMPTS) {
           clearInterval(checkInterval)
           console.log('Max attempts reached. Giving up.')
-          console.log(`timeElapsed: ${timeElapsed.value} ms, player.currentTime: ${player.currentTime}`)
-          playVideo()
-        } else if (savedTime != player.currentTime) {
-          player.currentTime = savedTime
+          console.log(`timeElapsed: ${timeElapsed.value} ms, player.currentTime: ${player.getCurrentTime()}`)
+          // playVideo()
+          player.play()
+        } else if (savedTime != player.getCurrentTime()) {
+          player.setCurrentTime(savedTime)
         } else {
           // Finally, we're done
           clearInterval(checkInterval)
           console.log(`timeElapsed: ${timeElapsed.value} ms`)
-          playVideo()
+          // console.log(`player.currentTime: ${player.getCurrentTime()}`)
+          // playVideo()
+          player.play()
         }
         timeElapsed.value += 1
       }, 1)
@@ -148,21 +116,8 @@ export default {
     watch(() => currentVideoInfo.value, () => {
       console.log('currentVideoInfo:', toRaw(currentVideoInfo.value))
       if (player && currentVideoInfo.value.videoUrl) {
-        player.once('ready', handleReady)
-        player.source = {
-          type: 'video',
-          sources: [{
-            src: currentVideoInfo.value.videoUrl,
-            type: 'video/mp4'
-          }],
-          tracks: currentVideoInfo.value.captionExists ? [{
-            kind: 'captions',
-            label: '中文',
-            srclang: 'zh',
-            src: currentVideoInfo.value.captionUrl,
-            default: true
-          }] : []
-        }
+        player.once('canplay', handleReady)
+        player.setSource(currentVideoInfo.value)
       }
     })
 
@@ -174,7 +129,6 @@ export default {
 
     return {
       playerRef,
-      currentVideoUrl,
       currentVideoInfo,
     }
   }
@@ -183,25 +137,22 @@ export default {
 
 <style>
 @import 'plyr/dist/plyr.css';
-
 /* Video player container style */
 .video-player {
   flex: 1;
   min-width: 0;
-  /* Prevent flex child items from overflowing */
   height: 100vh;
   background-color: #000;
   margin: 0;
+  display: flex;
 }
 
+.video-player .dplayer,
 .video-player .plyr {
   width: 100%;
   height: 100%;
 }
-
-.video-player video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.dplayer-subtitle {
+  text-shadow: 1px 1px 10px rgb(0, 0, 0) !important;
 }
 </style>
