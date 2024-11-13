@@ -5,7 +5,7 @@
       @mouseleave.stop="hideTooltip">
       <span class="icon">{{ isDirectory ? (isExpanded ? '📂' : '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
-      <span class="duration">{{ formatDuration(item.duration) }}</span>
+      <span class="duration">{{ formatDuration(item.info.duration) }}</span>
     </div>
 
     <Transition name="expand">

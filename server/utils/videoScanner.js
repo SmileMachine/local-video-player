@@ -10,16 +10,16 @@ import {
 } from "./progressBar.js";
 
 export class VideoScanner {
-  // options: { cacheName: string, getDuration: boolean }
-  // cache is used when getDuration is true
-  constructor({ getDuration = true, cacheName } = {}) {
+  // options: { cacheName: string, getInfo: boolean }
+  // cache is used when getInfo is true
+  constructor({ getInfo = true, cacheName } = {}) {
     this.supportedExtensions = [".mp4", ".webm", ".mkv", ".avi", ".mov"];
-    this.getDuration = getDuration;
+    this.getInfo = getInfo;
     // 初始化计数器
     this.cacheHit = 0;
     this.cacheMiss = 0;
 
-    const cacheInstance = new Cache(this.getDuration ? cacheName : null);
+    const cacheInstance = new Cache(this.getInfo ? cacheName : null);
     this.cache = {
       _cache: cacheInstance,
       get: function (key) {
@@ -44,32 +44,39 @@ export class VideoScanner {
     };
   }
 
-  async getVideoDuration(filePath) {
-    if (!this.getDuration) {
+  async getVideoInfo(filePath) {
+    if (!this.getInfo) {
       return null;
     }
     const stats = fs.statSync(filePath);
     const cacheKey = `${filePath}:${stats.mtime.getTime()}`;
 
-    // Check if the duration is cached
-    const duration = this.cache.get(cacheKey);
-    if (duration) {
-      return duration;
+    // Check if the info is cached
+    const info = this.cache.get(cacheKey);
+    if (info) {
+      return info;
     }
 
-    // If not cached, get the duration
+    // If not cached, use ffprobe
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(filePath, (err, metadata) => {
         if (err) {
-          logger.warn(`Could not get duration for ${filePath}: ${err.message}`);
+          logger.warn(
+            `Could not get video info for ${filePath}: ${err.message}`
+          );
           resolve(null);
           return;
         }
 
         const duration = parseFloat(metadata.format.duration);
+        // Find video stream and get its codec
+        const codec =
+          metadata.streams?.find((stream) => stream.codec_type === "video")
+            ?.codec_name ?? "[Unknown]";
+
         // Save to cache
-        this.cache.set(cacheKey, duration);
-        resolve(duration);
+        this.cache.set(cacheKey, { duration, codec });
+        resolve({ duration, codec });
       });
     });
   }
@@ -157,29 +164,32 @@ export class VideoScanner {
     }
   }
 
-  async enrichWithDurations(videoData, bar = mockProgressBar) {
+  async enrichWithInfos(videoData, bar = mockProgressBar) {
     try {
       const result = { ...videoData };
 
       if (result.type === "file") {
         this.processedFiles++;
         bar.update(this.processedFiles, { filename: result.name });
-        result.duration = await this.getVideoDuration(result.path);
+        result.info = await this.getVideoInfo(result.path);
         return result;
       }
 
+      // Recursively enrich children if
       result.children = await Promise.all(
-        videoData.children.map((item) => this.enrichWithDurations(item, bar))
+        videoData.children.map((item) => this.enrichWithInfos(item, bar))
       );
 
-      result.duration = result.children.reduce(
-        (sum, child) => sum + (child.duration ?? 0),
-        0
-      );
+      result.info = {
+        duration: result.children.reduce(
+          (sum, child) => sum + (child.info?.duration ?? 0),
+          0
+        ),
+      };
 
       return result;
     } catch (error) {
-      logger.error(`Error enriching items with duration: ${error.message}`);
+      logger.error(`Error enriching items with info: ${error.message}`);
       throw error;
     }
   }
@@ -201,7 +211,7 @@ export class VideoScanner {
           total: videos.videoCount,
         });
       }
-      const enrichedVideos = await this.enrichWithDurations(
+      const enrichedVideos = await this.enrichWithInfos(
         videos,
         infoProgressBar
       );

@@ -1,15 +1,19 @@
 import cliProgress from "cli-progress";
+import { logger } from "./logger.js";
 
 export function createProgressBar(options) {
   const bar = new cliProgress.SingleBar({
     // from grey-scale preset
     barCompleteChar: "\u2588",
     barIncompleteChar: "\u2591",
-    hideCursor: true,
-    clearOnComplete: true,
+    // hideCursor: true,
+    // clearOnComplete: true,
     stopOnComplete: true,
+    emptyOnZero: true,
     ...options,
   });
+
+  logger.debug(`createProgressBar: ${JSON.stringify(options)}`);
 
   return bar;
 }

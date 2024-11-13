@@ -7,15 +7,13 @@ describe("VideoScanner", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    scanner = new VideoScanner({ getDuration: true });
+    scanner = new VideoScanner({ getInfo: true });
   });
 
-  describe("getVideoDuration", () => {
-    test("should return the duration of a video file", async () => {
-      const duration = await scanner.getVideoDuration(
-        "public/vid1.mp4"
-      );
-      logger.info(duration);
+  describe("getVideoInfo", () => {
+    test("should return the info of a video file", async () => {
+      const info = await scanner.getVideoInfo("public/vid1.mp4");
+      logger.info(info);
     });
   });
 

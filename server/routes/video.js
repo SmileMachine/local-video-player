@@ -36,7 +36,6 @@ router.get("/", loggerMiddleware, async (req, res) => {
     const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
     const chunksize = end - start + 1;
     const file = fs.createReadStream(filePath, { start, end });
-    logger.debug(`start: ${start}, end: ${end}, chunksize: ${chunksize}`);
     const head = {
       "Content-Range": `bytes ${start}-${end}/${fileSize}`,
       "Accept-Ranges": "bytes",

@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
     logger.debug(`req.query.id: ${req.query.id}`);
     const videoPath = videoLibrary.getIdMap()[decodeURIComponent(req.query.id)];
     if (!videoPath) {
-      return res.status(404).send("Video not found");
+      return res.status(404).send("Caption not found");
     }
 
     const basePath = getBasePath(videoPath);

@@ -54,18 +54,56 @@ class VideoLibrary extends EventEmitter {
     const { videoPaths = [], usePathIds = true } = config;
     this.videoScanner = new VideoScanner({
       cacheName: config.cacheName,
-      getDuration: config.getDuration ?? true,
+      getInfo: config.getInfo ?? true,
     });
     this.videos = await this.scanVideoPaths(videoPaths);
     this.secureVideos = this.processPathSecurity(this.videos, usePathIds);
     this.emit("updated");
   }
 
-  async scanVideoPaths(videoPaths) {
-    const results = [];
+  async saveCache(results) {
+    try {
+      const cachePath = path.join(process.cwd(), "cache", "scan-cache.json");
+      const cacheDir = path.dirname(cachePath);
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+      fs.writeFileSync(cachePath, JSON.stringify(results, null, 2));
+    } catch (error) {
+      logger.warn(`Failed to save cache: ${error}`);
+    }
+  }
 
-    const startTime = Date.now();
+  async loadCache() {
+    const cachePath = path.join(process.cwd(), "cache", "scan-cache.json");
+    try {
+      if (fs.existsSync(cachePath)) {
+        return JSON.parse(fs.readFileSync(cachePath, "utf8"));
+      }
+    } catch (error) {
+      logger.warn(`Failed to load cache: ${error}`);
+    }
+    logger.info(`cache not found: ${cachePath}`);
+    return null;
+  }
+
+  async scanVideoPaths(videoPaths) {
+    // try to load cache
+    if (process.env.USE_CACHE) {
+      logger.info(`Loading cache...`);
+      const cache = await this.loadCache();
+      logger.info(
+        `Cache from ${moment(cache.time).format("YYYY-MM-DD HH:mm:ss")} loaded.`
+      );
+      if (cache) {
+        return cache.results;
+      }
+    }
+
+    const results = [];
     logger.info(`Scanning ${videoPaths.length} video paths...`);
+    // scan video paths
+    const startTime = Date.now();
     for (const { path: videoPath, name } of videoPaths) {
       try {
         // Convert ~ to user home directory
@@ -104,6 +142,7 @@ class VideoLibrary extends EventEmitter {
       100;
     logger.info(`Cache hit rate: ${cacheHitRate.toFixed(2)}%`);
 
+    await this.saveCache({ time: Date.now(), results });
     return results;
   }
 

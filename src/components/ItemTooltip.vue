@@ -4,12 +4,13 @@
     <div class="tooltip-content">
       <template v-if="isDirectory">
         <div><span class="label">文件数</span>{{ item.videoCount }}</div>
-        <div><span class="label">总时长</span>{{ formatDuration(item.duration) }}</div>
+        <div><span class="label">总时长</span>{{ formatDuration(item.info.duration) }}</div>
         <div><span class="label">总大小</span>{{ formatSize(item.size) }}</div>
         <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
       </template>
       <template v-else>
-        <div><span class="label">时长</span>{{ formatDuration(item.duration) }}</div>
+        <div><span class="label">时长</span>{{ formatDuration(item.info.duration) }}</div>
+        <div><span class="label">编码</span>{{ item.info.codec }}</div>
         <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
         <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
       </template>
