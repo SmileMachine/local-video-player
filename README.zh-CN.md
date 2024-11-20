@@ -26,7 +26,7 @@
    ```json
    {
       "getInfo": true, // 是否获取视频时长, 默认 true。 如果为false, 则会忽略缓存参数。
-      "usePathIds": true, // 是否使用路径 ID, 默认 true。如果为 false，则url会请求相对路径
+      "usePathIds": true, // 是否使用路径 ID, 默认 true。如果为 false，则url会请求相对路径(目前只能为 true)
       "cacheName": "video-info", // 视频时长缓存名称（/cache/video-info）, 不指定则不使用缓存。
       "videoPaths": [
          {

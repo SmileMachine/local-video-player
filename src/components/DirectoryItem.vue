@@ -1,17 +1,18 @@
 <template>
   <div class="directory-item" :class="{ 'is-directory': isDirectory }">
-    <div class="item-header" @click="isDirectory ? toggleExpand() : handleSelect()" ref="itemRef"
-      :class="{ 'active': !isDirectory && item.id === currentId }" @mouseenter.stop="showTooltip"
-      @mouseleave.stop="hideTooltip">
-      <span class="icon">{{ isDirectory ? (isExpanded ? '📂' : '📁') : '🎬' }}</span>
+    <div class="item-header" ref="itemRef" :class="{ 'active': !isDirectory && item.id === currentId }"
+      @mouseenter.stop="showTooltip" @mouseleave.stop="hideTooltip"
+      @click="isDirectory ? toggleExpand() : handleSelect()">
+      <span class="icon" @click.stop="isDirectory ? randomSelect() : handleSelect()">{{ isDirectory ? (isExpanded ? '📂' :
+        '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
       <span class="duration">{{ formatDuration(item.info.duration) }}</span>
     </div>
 
     <Transition name="expand">
       <div v-if="isDirectory && isExpanded" class="children">
-        <DirectoryItem v-for="child in item.children" :path="path.concat(child.name)" :item="child" :currentId="currentId"
-          :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+        <DirectoryItem v-for="child in item.children" :path="path.concat(child.name)" :item="child"
+          :currentId="currentId" :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
       </div>
     </Transition>
 
@@ -76,6 +77,38 @@ export default {
       emit('select-video', { id: props.item.id, path: props.path })
     }
 
+    const traverse = (item, path, select) => {
+      if (item.type === 'file') {
+        return { id: item.id, path: path }
+      }
+      for (const child of item.children) {
+        if (child.type === 'file') {
+          if (select === 0) {
+            return { id: child.id, path: path.concat(child.name) }
+          }
+          select -= 1
+        } else if (child.type === 'directory') {
+          if (select < child.videoCount) {
+            const result = traverse(child, path.concat(child.name), select)
+            if (result) {
+              return result
+            }
+          } else {
+            select -= child.videoCount
+          }
+        }
+      }
+    }
+
+    const randomSelect = () => {
+      const path = props.path; // array
+      const select = Math.floor(Math.random() * props.item.videoCount);
+      const result = traverse(props.item, path, select)
+      if (result) {
+        emit('select-video', result)
+      }
+    }
+
 
     const formatDuration = (seconds) => {
       if (!seconds) return '0:00'
@@ -109,6 +142,7 @@ export default {
       hideTooltip,
       toggleExpand,
       handleSelect,
+      randomSelect,
       formatDuration,
       itemRef
     }
@@ -167,7 +201,8 @@ export default {
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.4s ease;
-  max-height: 1000px; /* Set a large enough value */
+  max-height: 1000px;
+  /* Set a large enough value */
   overflow: hidden;
 }
 
