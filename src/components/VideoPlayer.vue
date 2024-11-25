@@ -39,12 +39,12 @@ export default {
     }
 
     // Save the playback time
-    const saveVideoTime = (videoUrl, currentTime) => {
+    const saveVideoTime = (vid_key, currentTime) => {
       let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
 
       // If the number of records exceeds the maximum, delete the earliest accessed record
       const keys = Object.keys(history)
-      if (keys.length >= MAX_HISTORY_ITEMS && !history[videoUrl]) {
+      if (keys.length >= MAX_HISTORY_ITEMS && !history[vid_key]) {
         // Remove the earliest accessed record
         const earliest = keys.reduce((earliest, key) => {
           if (!earliest || history[key].accessedAt < history[earliest].accessedAt) {
@@ -59,7 +59,7 @@ export default {
       }
 
       // Update the playback time and the access time
-      history[videoUrl] = {
+      history[vid_key] = {
         time: currentTime,
         accessedAt: Date.now()
       }
@@ -72,21 +72,22 @@ export default {
         container: document.getElementById('video-player'),
         // Save the playback position when the video is playing
         onTimeUpdate: () => {
-          console.log('onTimeUpdate')
+          // console.log('onTimeUpdate')
           // If is playing
-          if (player.isPlaying() && currentVideoInfo.value.videoUrl) {
-            saveVideoTime(currentVideoInfo.value.videoUrl, player.getCurrentTime())
+          if (player.isPlaying() && currentVideoInfo.value.path) {
+            saveVideoTime(currentVideoInfo.value.path, player.getCurrentTime())
+            console.log(currentVideoInfo.value.path)
           }
         },
         onEnded: () => {
-          saveVideoTime(currentVideoInfo.value.videoUrl, 0)
+          saveVideoTime(currentVideoInfo.value.path, 0)
         }
       })
     })
 
     const handleReady = () => {
       // Set the saved playback position
-      const savedTime = loadVideoTime(currentVideoInfo.value.videoUrl)
+      const savedTime = loadVideoTime(currentVideoInfo.value.path)
       const timeElapsed = ref(0)
       const MAX_ATTEMPTS = 500
       const checkInterval = setInterval(() => {

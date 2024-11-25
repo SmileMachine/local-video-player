@@ -41,6 +41,7 @@ export function useVideoLibrary() {
             captionExists: data.exists,
             videoUrl: currentVideoUrl.value,
             captionUrl: currentCaptionUrl.value,
+            path: currentPath.value,
           }
         } catch (error) {
           console.error("Error fetching caption status:", error);
