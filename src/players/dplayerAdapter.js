@@ -51,6 +51,19 @@ export default class DPlayerAdapter {
   }
 
   once(event, callback) {
-    this.player.on(event, callback);
+    const wrappedCallback = (...args) => {
+      // execute the callback
+      callback(...args);
+      // remove the callback from the event array
+      const eventCallbacks = this.player.events.events[event];
+      if (eventCallbacks) {
+        const index = eventCallbacks.indexOf(wrappedCallback);
+        if (index !== -1) {
+          eventCallbacks.splice(index, 1);
+        }
+      }
+    };
+    
+    this.player.on(event, wrappedCallback);
   }
 }
