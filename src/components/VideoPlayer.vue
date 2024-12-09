@@ -68,13 +68,17 @@ export default {
     }
 
     onMounted(async () => {
+      const updateInterval = 10 // updates every 10 'TimeUpdate' events
+      let count = updateInterval // updates every 10 'TimeUpdate' events
       player = await createPlayer(props.playerType, {
         container: document.getElementById('video-player'),
         // Save the playback position when the video is playing
         onTimeUpdate: () => {
           // console.log('onTimeUpdate')
           // If is playing
-          if (player.isPlaying() && currentVideoInfo.value.path) {
+          count -= 1
+          if (player.isPlaying() && currentVideoInfo.value.path && count <= 0) {
+            count = updateInterval
             saveVideoTime(currentVideoInfo.value.path, player.getCurrentTime())
             console.log(currentVideoInfo.value.path)
           }
