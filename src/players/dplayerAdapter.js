@@ -34,6 +34,13 @@ export default class DPlayerAdapter {
     this.player.pause();
   }
 
+  focus() {
+    if (this.player.video) {
+      this.player.focus = true;
+      this.player.video.focus();
+    }
+  }
+
   getCurrentTime() {
     return this.player.video.currentTime;
   }

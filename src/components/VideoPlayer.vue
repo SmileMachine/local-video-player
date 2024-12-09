@@ -67,6 +67,12 @@ export default {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
     }
 
+    const focusVideo = () => {
+      if (player) {
+        player.focus()
+      }
+    }
+
     onMounted(async () => {
       const updateInterval = 10 // updates every 10 'TimeUpdate' events
       let count = updateInterval // updates every 10 'TimeUpdate' events
@@ -86,6 +92,10 @@ export default {
         onEnded: () => {
           saveVideoTime(currentVideoInfo.value.path, 0)
         }
+      })
+
+      window.addEventListener('click', () => {
+        setTimeout(focusVideo, 0)
       })
     })
 
@@ -142,6 +152,7 @@ export default {
 
 <style>
 @import 'plyr/dist/plyr.css';
+
 /* Video player container style */
 .video-player {
   flex: 1;
@@ -157,6 +168,7 @@ export default {
   width: 100%;
   height: 100%;
 }
+
 .dplayer-subtitle {
   text-shadow: 1px 1px 10px rgb(0, 0, 0) !important;
 }

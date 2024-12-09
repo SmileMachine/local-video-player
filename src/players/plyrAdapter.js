@@ -61,6 +61,12 @@ export default class PlyrAdapter {
     this.player.pause();
   }
 
+  focus() {
+    if (this.player.elements.container) {
+      this.player.elements.container.focus()
+    }
+  }
+
   getCurrentTime() {
     return this.player.currentTime;
   }
