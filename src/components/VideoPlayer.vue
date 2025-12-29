@@ -94,6 +94,9 @@ export default {
         }
       })
 
+      // Expose player instance for keyboard shortcuts
+      window.__videoPlayer = player
+
       window.addEventListener('click', () => {
         setTimeout(focusVideo, 0)
       })
@@ -141,6 +144,7 @@ export default {
       if (player) {
         player.destroy()
       }
+      window.__videoPlayer = null
     })
 
     return {

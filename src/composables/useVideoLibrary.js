@@ -14,6 +14,7 @@ export function useVideoLibrary() {
       : []
   );
   const flatVideoList = ref([]);
+  const showShortcutsModal = ref(false);
 
   const currentVideoUrl = computed(() => {
     if (!currentVideoId.value) return "";
@@ -138,10 +139,35 @@ export function useVideoLibrary() {
     const currentIndex = getCurrentIndex();
     // console.log(e.key);
     // console.log(currentIndex);
-    if (e.key === "PageDown") {
+
+    // F key - Toggle fullscreen
+    if (e.key === "f" || e.key === "F") {
+      e.preventDefault();
+      const player = window.__videoPlayer;
+      if (player && player.toggleFullscreen) {
+        player.toggleFullscreen();
+      }
+    }
+    // M key - Toggle mute
+    else if (e.key === "m" || e.key === "M") {
+      e.preventDefault();
+      const player = window.__videoPlayer;
+      if (player && player.toggleMute) {
+        player.toggleMute();
+      }
+    }
+    // H key - Show/hide shortcuts guide
+    else if (e.key === "h" || e.key === "H") {
+      e.preventDefault();
+      showShortcutsModal.value = !showShortcutsModal.value;
+    }
+    // PageDown - Next video
+    else if (e.key === "PageDown") {
       e.preventDefault();
       playVideoByIndex(currentIndex + 1);
-    } else if (e.key === "PageUp") {
+    }
+    // PageUp - Previous video
+    else if (e.key === "PageUp") {
       e.preventDefault();
       playVideoByIndex(currentIndex - 1);
     }
@@ -158,6 +184,7 @@ export function useVideoLibrary() {
     flatVideoList,
     selectVideo,
     handleKeydown,
+    showShortcutsModal,
   };
   return instance;
 }

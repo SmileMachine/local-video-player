@@ -70,7 +70,19 @@ export default class DPlayerAdapter {
         }
       }
     };
-    
+
     this.player.on(event, wrappedCallback);
+  }
+
+  toggleFullscreen() {
+    if (this.player.fullScreen.isFullScreen()) {
+      this.player.fullScreen.cancel();
+    } else {
+      this.player.fullScreen.request();
+    }
+  }
+
+  toggleMute() {
+    this.player.video.muted = !this.player.video.muted;
   }
 }

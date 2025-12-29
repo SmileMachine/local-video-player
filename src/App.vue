@@ -2,19 +2,22 @@
   <div class="app-container">
     <Sidebar :videos="videos" :current-id="currentVideoId" :current-path="currentPath" @select-video="selectVideo" />
     <VideoPlayer :player-type="playerType" />
+    <ShortcutsGuideModal :show="showShortcutsModal" @close="showShortcutsModal = false" />
   </div>
 </template>
 
 <script>
 import Sidebar from './components/Sidebar.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
+import ShortcutsGuideModal from './components/ShortcutsGuideModal.vue'
 import { useVideoLibrary } from './composables/useVideoLibrary'
 
 export default {
   name: 'App',
   components: {
     Sidebar,
-    VideoPlayer
+    VideoPlayer,
+    ShortcutsGuideModal
   },
   setup() {
     const {
@@ -22,6 +25,7 @@ export default {
       currentVideoId,
       currentPath,
       selectVideo,
+      showShortcutsModal,
     } = useVideoLibrary()
 
     const playerType = import.meta.env.VITE_PLAYER_TYPE || "Plyr"
@@ -33,6 +37,7 @@ export default {
       currentVideoId,
       currentPath,
       selectVideo,
+      showShortcutsModal,
     }
   }
 }

@@ -86,4 +86,17 @@ export default class PlyrAdapter {
   once(event, callback) {
     this.player.once(event, callback);
   }
+
+  toggleFullscreen() {
+    if (this.player.fullscreen.active) {
+      this.player.fullscreen.exit();
+    } else {
+      this.player.fullscreen.enter();
+    }
+  }
+
+  toggleMute() {
+    // it seems plyr handles mute
+    // this.player.muted = !this.player.muted;
+  }
 }
