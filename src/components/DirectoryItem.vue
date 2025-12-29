@@ -77,6 +77,7 @@ export default {
       emit('select-video', { id: props.item.id, path: props.path })
     }
 
+    // Used to randomly select a video in the directory
     const traverse = (item, path, select) => {
       if (item.type === 'file') {
         return { id: item.id, path: path }
@@ -116,6 +117,7 @@ export default {
       return moment.utc(seconds * 1000).format(hours > 0 ? `${hours}:mm:ss` : 'mm:ss')
     }
 
+    // Expand the directory when the currentPath changes
     watch(() => props.currentPath, () => {
       if (isDirectory.value && props.currentPath && props.path.length <= props.currentPath.length) {
         if (props.currentPath.slice(0, props.path.length).join('/') === props.path.join('/')) {
@@ -124,6 +126,7 @@ export default {
       }
     }, { immediate: true })
 
+    // Scroll to the current item when the currentId changes
     watch(() => props.currentId, (newId) => {
       if (!props.isDirectory && newId === props.item.id && itemRef.value) {
         itemRef.value.scrollIntoView({

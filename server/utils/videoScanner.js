@@ -131,15 +131,16 @@ export class VideoScanner {
       );
       // Filter out null items
       // Sort by dsirectory first, then by name ascending
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
       const validChildren = children
         .filter(Boolean)
-        .sort((a, b) =>
-          a.type !== b.type
-            ? a.type === "directory"
-              ? -1
-              : 1
-            : a.name.localeCompare(b.name)
-        );
+        .sort((a, b) => {
+          if (a.type !== b.type) {
+            return a.type === "directory" ? -1 : 1;
+          }
+          return collator.compare(a.name, b.name);
+        });
       if (validChildren.length === 0) {
         return null;
       }

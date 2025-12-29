@@ -103,6 +103,7 @@ export default {
       // Set the saved playback position
       const savedTime = loadVideoTime(currentVideoInfo.value.path)
       const timeElapsed = ref(0)
+      const eps = 1e-3
       const MAX_ATTEMPTS = 500
       const checkInterval = setInterval(() => {
         // So fucking weird. Have to set the currentTime
@@ -113,7 +114,7 @@ export default {
           console.log(`timeElapsed: ${timeElapsed.value} ms, player.currentTime: ${player.getCurrentTime()}`)
           // playVideo()
           player.play()
-        } else if (savedTime != player.getCurrentTime()) {
+        } else if (Math.abs(savedTime - player.getCurrentTime()) > eps) {
           player.setCurrentTime(savedTime)
         } else {
           // Finally, we're done
