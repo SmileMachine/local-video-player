@@ -41,13 +41,16 @@ export function useVideoLibrary() {
           currentVideoInfo.value = {
             captionExists: data.exists,
             videoUrl: currentVideoUrl.value,
-            captionUrl: currentCaptionUrl.value,
+            captionUrl: data.exists ? currentCaptionUrl.value : "",
             path: currentPath.value,
           }
         } catch (error) {
           console.error("Error fetching caption status:", error);
           currentVideoInfo.value = {
             captionExists: false,
+            videoUrl: currentVideoUrl.value,
+            captionUrl: "",
+            path: currentPath.value,
           };
         }
       }

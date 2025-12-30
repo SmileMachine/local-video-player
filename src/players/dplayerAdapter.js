@@ -20,7 +20,12 @@ export default class DPlayerAdapter {
   }
 
   setSource(videoInfo) {
-    this.player.template.subtrack.src = videoInfo.captionUrl;
+    // Only set caption URL if captions exist
+    if (videoInfo.captionExists) {
+      this.player.template.subtrack.src = videoInfo.captionUrl;
+    } else {
+      this.player.template.subtrack.src = "";
+    }
     this.player.switchVideo({
       url: videoInfo.videoUrl,
     });
