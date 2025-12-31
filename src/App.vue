@@ -1,15 +1,24 @@
 <template>
   <div class="app-container">
-    <Sidebar :videos="videos" :current-id="currentVideoId" :current-path="currentPath" @select-video="selectVideo" />
+    <Sidebar
+      :videos="videos"
+      :current-id="currentVideoId"
+      :current-path="currentPath"
+      @select-video="selectVideo"
+      @open-settings="showSettingsModal = true"
+    />
     <VideoPlayer :player-type="playerType" />
     <ShortcutsGuideModal :show="showShortcutsModal" @close="showShortcutsModal = false" />
+    <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @saved="handleConfigSaved" />
   </div>
 </template>
 
 <script>
+import { ref } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
 import ShortcutsGuideModal from './components/ShortcutsGuideModal.vue'
+import SettingsModal from './components/SettingsModal.vue'
 import { useVideoLibrary } from './composables/useVideoLibrary'
 
 export default {
@@ -17,7 +26,8 @@ export default {
   components: {
     Sidebar,
     VideoPlayer,
-    ShortcutsGuideModal
+    ShortcutsGuideModal,
+    SettingsModal
   },
   setup() {
     const {
@@ -28,7 +38,13 @@ export default {
       showShortcutsModal,
     } = useVideoLibrary()
 
+    const showSettingsModal = ref(false)
     const playerType = import.meta.env.VITE_PLAYER_TYPE || "Plyr"
+
+    const handleConfigSaved = () => {
+      // Reload the page to apply new configuration
+      window.location.reload()
+    }
 
     return {
       // video library
@@ -38,6 +54,8 @@ export default {
       currentPath,
       selectVideo,
       showShortcutsModal,
+      showSettingsModal,
+      handleConfigSaved
     }
   }
 }

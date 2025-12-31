@@ -24,6 +24,9 @@ async function createServer() {
   // Enable cors
   app.use(cors());
 
+  // Parse JSON request bodies
+  app.use(express.json());
+
   // Mount the routes
   app.use("/video", videoRouter);
   app.use("/api", apiRouter);

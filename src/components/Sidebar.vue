@@ -7,7 +7,11 @@
         < </span>
     </button>
     <!-- Playlist Content -->
-    <div class="playlist-content">
+    <div v-if="!isCollapsed" class="playlist-content">
+      <!-- Settings Button - Top Left -->
+      <button class="settings-button" @click="$emit('open-settings')" title="设置">
+        ⚙️
+      </button>
       <!-- Directory Tree -->
       <div class="directory-tree">
         <DirectoryItem v-for="item in videos" :path="[item.name]" :item="item" :currentId="currentId"
@@ -30,7 +34,7 @@ export default {
     currentId: String,
     currentPath: Array,
   },
-  emits: ['select-video', 'toggle', 'resize-start', 'reset-width'],
+  emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings'],
   setup(props) {
     const {
       sidebarWidth,
@@ -134,13 +138,42 @@ body.resizing::after {
   background: rgba(255, 255, 255, 0.15);
 }
 
-
 /* 当鼠标靠近时显示按钮 */
 .toggle-button.outside:hover {
   opacity: 1;
   transform: translateX(0);
 }
 
+/* Settings button */
+.settings-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  outline: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 1;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.settings-button:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.settings-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.directory-tree {
+  margin-top: 50px;
+}
 
 /* 播放列表样式 */
 .playlist {
@@ -154,10 +187,11 @@ body.resizing::after {
   color: #e0e0e0;
 }
 
-/* 添加内容容器来控制滚动 */
+/* Playlist content */
 .playlist-content {
   height: 100%;
   overflow-y: auto;
   padding: 20px;
+  position: relative;
 }
 </style>
