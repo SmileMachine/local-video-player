@@ -102,11 +102,19 @@ export default {
     // 浏览器支持的编码列表
     const isVideoCodecSupported = (codec) => {
       const supported = ['h264', 'avc1', 'vp8', 'vp9', 'av01']
+      // macOS/iOS Safari 和 Edge 支持 HEVC
+      const userAgent = navigator.userAgent.toLowerCase()
+      const isMac = userAgent.includes('mac os x')
+      const isIOS = /iphone|ipad|ipod/.test(userAgent)
+      if ((isMac || isIOS) && ['hevc', 'h265', 'hvc1'].includes(codec?.toLowerCase())) {
+        return true
+      }
       return supported.includes(codec?.toLowerCase())
     }
 
     const isAudioCodecSupported = (codec) => {
       const supported = ['aac', 'mp3', 'opus', 'vorbis', 'flac']
+      // EAC3/AC3 在某些系统上可能部分支持，标记为不确定
       return supported.includes(codec?.toLowerCase())
     }
 
@@ -121,9 +129,13 @@ export default {
     }
 
     const getVideoCodecWarning = (codec) => {
+      const userAgent = navigator.userAgent.toLowerCase()
+      const isMac = userAgent.includes('mac os x')
+      const isIOS = /iphone|ipad|ipod/.test(userAgent)
+
       const warnings = {
-        'hevc': 'H.265/HEVC - 仅 Safari 支持',
-        'h265': 'H.265/HEVC - 仅 Safari 支持',
+        'hevc': isMac || isIOS ? '' : 'H.265/HEVC - 仅 Safari/macOS/iOS 支持',
+        'h265': isMac || isIOS ? '' : 'H.265/HEVC - 仅 Safari/macOS/iOS 支持',
         'mpeg4': 'MPEG-4 Part 2 - 支持有限'
       }
       return warnings[codec?.toLowerCase()] || '该编码可能在部分浏览器中不支持'
@@ -132,8 +144,8 @@ export default {
     const getAudioCodecWarning = (codec) => {
       const warnings = {
         'dts': 'DTS - 浏览器不支持',
-        'ac3': 'AC3 - 浏览器不支持',
-        'eac3': 'E-AC3 - 浏览器不支持'
+        'ac3': 'AC3 - 可能需要系统解码器支持',
+        'eac3': 'E-AC3 - 可能需要系统解码器支持，取决于容器格式'
       }
       return warnings[codec?.toLowerCase()] || '该音频编码可能在部分浏览器中不支持'
     }
