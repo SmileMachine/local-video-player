@@ -6,6 +6,7 @@
       :current-path="currentPath"
       @select-video="selectVideo"
       @open-settings="showSettingsModal = true"
+      @open-shortcuts="showShortcutsModal = true"
     />
     <VideoPlayer :player-type="playerType" />
     <ShortcutsGuideModal :show="showShortcutsModal" @close="showShortcutsModal = false" />

@@ -12,6 +12,9 @@
         <button class="settings-button" @click="$emit('open-settings')" title="设置">
           <i class="fas fa-cog"></i>
         </button>
+        <button class="help-button" @click="$emit('open-shortcuts')" title="快捷键">
+          <i class="fas fa-question"></i>
+        </button>
       </div>
       <!-- Directory Tree Scroll - 滚动区域 -->
       <div class="directory-tree-scroll">
@@ -38,7 +41,7 @@ export default {
     currentId: String,
     currentPath: Array,
   },
-  emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings'],
+  emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings', 'open-shortcuts'],
   setup() {
     const {
       sidebarWidth,
@@ -119,7 +122,7 @@ body.resizing::after {
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.6s ease-in-out;
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -138,25 +141,28 @@ body.resizing::after {
 .toggle-button.outside {
   right: -75px;
   opacity: 0;
-  /* 当按钮在外部时，添加一个小小的位移效果 */
-  transform: translateX(-10px);
   padding: 20px;
   width: 60px;
   height: 60px;
   font-size: 20px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.15);
-  transition: opacity 0.8s ease-out, transform 1s ease-out;
+  transition:
+      opacity 0.8s ease-in 0.2s,
+      transform 1s ease-out,
+      right 0.35s ease-out;
 }
 
 /* 当鼠标靠近时显示按钮 */
 .toggle-button.outside:hover {
   opacity: 1;
   transform: translateX(0);
+  transition: opacity 0.4s ease-out;
 }
 
-/* Settings button */
-.settings-button {
+/* Appbar buttons */
+.settings-button,
+.help-button {
   width: 36px;
   height: 36px;
   background: rgba(255, 255, 255, 0.1);
@@ -173,12 +179,14 @@ body.resizing::after {
   justify-content: center;
 }
 
-.settings-button:focus {
+.settings-button:focus,
+.help-button:focus {
   outline: none;
   box-shadow: none;
 }
 
-.settings-button:hover {
+.settings-button:hover,
+.help-button:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
 }
