@@ -4,7 +4,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>服务端设置</h2>
-          <button class="close-button" @click="close">&times;</button>
+          <button class="close-button" @click="close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
           <div v-if="loading" class="loading">加载中...</div>
@@ -258,7 +258,7 @@ export default {
   background: none;
   border: none;
   color: #a0a0a0;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
@@ -269,6 +269,7 @@ export default {
   justify-content: center;
   border-radius: 4px;
   transition: all 0.2s ease;
+  outline: none;
 }
 
 .close-button:hover {

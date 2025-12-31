@@ -114,7 +114,7 @@ body.resizing::after {
   background: rgba(255, 255, 255, 0.1);
   border: none;
   outline: none;
-  color: white;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   font-size: 16px;
   z-index: 20;
@@ -122,7 +122,7 @@ body.resizing::after {
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  transition: all 0.6s ease-in-out;
+  transition: all 0.6s ease-in-out, background 0s;
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -139,25 +139,26 @@ body.resizing::after {
 }
 
 .toggle-button.outside {
-  right: -75px;
   opacity: 0;
   padding: 20px;
+  right: -75px;
   width: 60px;
   height: 60px;
   font-size: 20px;
-  border-radius: 8px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.15);
   transition:
-      opacity 0.8s ease-in 0.2s,
-      transform 1s ease-out,
-      right 0.35s ease-out;
+    width 0.4s ease-out,
+    height 0.4s ease-out,
+    right 0.4s ease-out,
+    opacity 0.8s ease-in-out 0.4s;
 }
 
 /* 当鼠标靠近时显示按钮 */
 .toggle-button.outside:hover {
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 0.4s ease-out;
+  transition: opacity 0s;
 }
 
 /* Appbar buttons */
@@ -166,9 +167,8 @@ body.resizing::after {
   width: 36px;
   height: 36px;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
   outline: none;
-  color: white;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   font-size: 16px;
   padding: 0;
@@ -189,6 +189,7 @@ body.resizing::after {
 .help-button:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
+  color: white;
 }
 
 /* Appbar - 浮在 content 上方 */
