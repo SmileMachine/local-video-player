@@ -12,15 +12,44 @@ You can specify the path to your local video folder in the configuration, and ac
 
 1. Configure environment variables in `.env`
 
-   | Variable   | Default       | Description                                                                    |
-   | ---------- | ------------- | ------------------------------------------------------------------------------ |
-   | `PORT`     | `3000`        | Server port                                                                    |
-   | `HOST`     | `localhost`   | Address to bind to                                                             |
-   | `NODE_ENV` | `development` | Environment. Can be either `development` or `production`                       |
-   | `GET_VID_INFO` | `true`        | Whether to fetch video infos like duration and codec. May take a long time if there are many videos. `ffmpeg` is needed. |
+   | Variable     | Default       | Description                                                                    |
+   | ------------ | ------------- | ------------------------------------------------------------------------------ |
+   | `PORT`       | `3000`        | Server port                                                                    |
+   | `HOST`       | `localhost`   | Address to bind to                                                             |
+   | `NODE_ENV`   | `development` | Environment. Can be either `development` or `production`                       |
+   | `GET_VID_INFO` | `false`      | Whether to fetch video infos like duration and codec. May take a long time if there are many videos. `ffmpeg` is needed. |
    | `PLAYER_TYPE` | `Plyr`        | Player type. Can be either `DPlayer` or `Plyr`                                |
    | `USE_CACHE`  | `false`       | Whether to use last scan results. If true, video infos will be cached in `cache/scan-cache.json`. |
-2. Install dependencies, build frontend, and start server
+
+2. Create configuration file `config.json` (refer to `config.example.json`)
+
+   ```json
+   {
+     "cacheName": "video-info",
+     "usePathIds": true,
+     "getDuration": true,
+     "videoPaths": [
+       {
+         "name": "Videos",
+         "path": "~/Movies"
+       },
+       {
+         "name": "Downloads",
+         "path": "~/Downloads"
+       }
+     ]
+   }
+   ```
+
+   **Configuration options:**
+   - `cacheName`: Name of the cache file
+   - `usePathIds`: Use UUID instead of file paths
+   - `getDuration`: Fetch video duration (requires `ffmpeg`, may take time for large libraries)
+   - `videoPaths`: Array of video paths to scan
+
+   You can also modify the configuration through the web UI after starting the server.
+
+3. Install dependencies, build frontend, and start server
 
    ```bash
    npm install
@@ -30,7 +59,7 @@ You can specify the path to your local video folder in the configuration, and ac
    npm run start:cache # use cache to skip scanning
    ```
 
-3. Development mode, using Vite for frontend and Express for backend, both with hot reload
+4. Development mode, using Vite for frontend and Express for backend, both with hot reload
 
    ```bash
    npm install
@@ -38,3 +67,17 @@ You can specify the path to your local video folder in the configuration, and ac
    # or
    npm run dev:cache # use cache to skip scanning
    ```
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+| ---------- | ------------- |
+| `Space` | Play/Pause |
+| `F` | Toggle fullscreen |
+| `M` | Mute/Unmute |
+| `←` / `→` | Seek backward/forward 5 seconds |
+| `↑` / `↓` | Volume up/down |
+| `PageUp` / `PageDown` | Previous/Next video |
+| `Shift` + `Enter` | Toggle sidebar |
+| `H` | Show/hide shortcuts guide |
+| `Esc` | Close shortcuts guide |
