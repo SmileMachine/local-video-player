@@ -2,16 +2,15 @@
   <div class="playlist" :style="{ width: isCollapsed ? '0px' : sidebarWidth + 'px' }">
     <!-- Toggle Button -->
     <button class="toggle-button" :class="{ 'outside': isCollapsed }" @click="handleToggleClick">
-      <span v-if="isCollapsed"> > </span>
-      <span v-else>
-        < </span>
+      <i v-if="isCollapsed" class="fas fa-chevron-right"></i>
+      <i v-else class="fas fa-chevron-left"></i>
     </button>
     <!-- Playlist Content -->
     <div v-if="!isCollapsed" class="playlist-content">
       <!-- Appbar - 固定顶部 -->
       <div class="appbar">
         <button class="settings-button" @click="$emit('open-settings')" title="设置">
-          ⚙️ 设置
+          <i class="fas fa-cog"></i>
         </button>
       </div>
       <!-- Directory Tree Scroll - 滚动区域 -->
@@ -116,10 +115,15 @@ body.resizing::after {
   cursor: pointer;
   font-size: 16px;
   z-index: 20;
-  padding: 5px 10px;
+  padding: 0;
+  width: 36px;
+  height: 36px;
   border-radius: 4px;
-  transition: padding 0.5s ease-in-out, opacity 1s ease-in, transform 1s ease-out;
+  transition: all 0.3s ease-in-out;
   backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle-button:focus {
@@ -129,18 +133,20 @@ body.resizing::after {
 
 .toggle-button:hover {
   background: rgba(255, 255, 255, 0.2);
-  transition: padding 0.5s ease-in-out, opacity 0.1s ease-out, transform 0.3s ease-out;
 }
 
 .toggle-button.outside {
-  right: -65px;
+  right: -75px;
   opacity: 0;
   /* 当按钮在外部时，添加一个小小的位移效果 */
   transform: translateX(-10px);
   padding: 20px;
+  width: 60px;
+  height: 60px;
   font-size: 20px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.15);
+  transition: opacity 0.8s ease-out, transform 1s ease-out;
 }
 
 /* 当鼠标靠近时显示按钮 */
@@ -151,19 +157,20 @@ body.resizing::after {
 
 /* Settings button */
 .settings-button {
+  width: 36px;
+  height: 36px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   outline: none;
   color: white;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 16px;
+  font-size: 16px;
+  padding: 0;
   border-radius: 6px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
 }
 
 .settings-button:focus {

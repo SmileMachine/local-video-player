@@ -3,7 +3,7 @@
     <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h2>设置</h2>
+          <h2>服务端设置</h2>
           <button class="close-button" @click="close">&times;</button>
         </div>
         <div class="modal-body">
@@ -395,28 +395,36 @@ export default {
   cursor: pointer;
   color: #b0b0b0;
   font-size: 14px;
+  text-align: left;
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .checkbox-label span {
-  flex: 1;
+  text-align: left;
 }
 
 .input-group {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   margin-top: 8px;
 }
 
 .input-group label {
   color: #b0b0b0;
   font-size: 14px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.input-group .input-text {
+  flex: 1;
 }
 
 .modal-footer {
