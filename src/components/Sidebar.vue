@@ -8,14 +8,19 @@
     </button>
     <!-- Playlist Content -->
     <div v-if="!isCollapsed" class="playlist-content">
-      <!-- Settings Button - Top Left -->
-      <button class="settings-button" @click="$emit('open-settings')" title="设置">
-        ⚙️
-      </button>
-      <!-- Directory Tree -->
-      <div class="directory-tree">
-        <DirectoryItem v-for="item in videos" :path="[item.name]" :item="item" :currentId="currentId"
-          :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+      <!-- Appbar - 固定顶部 -->
+      <div class="appbar">
+        <button class="settings-button" @click="$emit('open-settings')" title="设置">
+          ⚙️ 设置
+        </button>
+      </div>
+      <!-- Directory Tree Scroll - 滚动区域 -->
+      <div class="directory-tree-scroll">
+        <!-- Directory Tree - 内容 -->
+        <div class="directory-tree">
+          <DirectoryItem v-for="item in videos" :path="[item.name]" :item="item" :currentId="currentId"
+            :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+        </div>
       </div>
     </div>
   </div>
@@ -26,7 +31,7 @@
 <script>
 import DirectoryItem from './DirectoryItem.vue'
 import { useSidebar } from '../composables/useSidebar'
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 export default {
   components: { DirectoryItem },
   props: {
@@ -35,7 +40,7 @@ export default {
     currentPath: Array,
   },
   emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings'],
-  setup(props) {
+  setup() {
     const {
       sidebarWidth,
       isCollapsed,
@@ -110,7 +115,7 @@ body.resizing::after {
   color: white;
   cursor: pointer;
   font-size: 16px;
-  z-index: 1;
+  z-index: 20;
   padding: 5px 10px;
   border-radius: 4px;
   transition: padding 0.5s ease-in-out, opacity 1s ease-in, transform 1s ease-out;
@@ -146,20 +151,19 @@ body.resizing::after {
 
 /* Settings button */
 .settings-button {
-  position: absolute;
-  top: 10px;
-  left: 10px;
   background: rgba(255, 255, 255, 0.1);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   outline: none;
   color: white;
   cursor: pointer;
-  font-size: 16px;
-  z-index: 1;
-  padding: 5px 10px;
-  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
   transition: all 0.2s ease;
-  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .settings-button:focus {
@@ -168,11 +172,36 @@ body.resizing::after {
 }
 
 .settings-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Appbar - 固定顶部栏 */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Directory Tree Scroll - 滚动区域 */
+.directory-tree-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Directory Tree - 内容区域 */
 .directory-tree {
-  margin-top: 50px;
+  padding: 16px;
 }
 
 /* 播放列表样式 */
@@ -190,8 +219,25 @@ body.resizing::after {
 /* Playlist content */
 .playlist-content {
   height: 100%;
-  overflow-y: auto;
-  padding: 20px;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 自定义滚动条样式 */
+.directory-tree-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.directory-tree-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.directory-tree-scroll::-webkit-scrollbar-thumb {
+  background: rgba(61, 61, 61, 0.8);
+  border-radius: 4px;
+}
+
+.directory-tree-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(77, 77, 77, 0.9);
 }
 </style>

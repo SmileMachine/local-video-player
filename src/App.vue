@@ -90,10 +90,4 @@ body {
   top: 0;
   left: 0;
 }
-
-
-.directory-tree {
-  padding: 0;
-  margin: 0;
-}
 </style>
