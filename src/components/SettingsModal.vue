@@ -45,12 +45,11 @@
                 <span>使用 UUID 替代文件路径</span>
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" v-model="localConfig.getDuration" />
-                <span>获取视频时长</span>
-              </label>
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="localConfig.getCodecInfo" />
-                <span>获取编码信息</span>
+                <input type="checkbox" v-model="localConfig.getVideoInfo" />
+                <span>获取视频信息（时长、编码等）</span>
+                <small style="display: block; margin-left: 30px; color: #888; margin-top: 4px;">
+                  使用 ffmpeg 获取视频详细信息，可能较耗时
+                </small>
               </label>
               <div class="input-group">
                 <label>缓存名称:</label>
@@ -94,8 +93,7 @@ export default {
     const localConfig = reactive({
       cacheName: 'video-info',
       usePathIds: true,
-      getDuration: true,
-      getCodecInfo: true,
+      getVideoInfo: true,
       videoPaths: []
     })
 
@@ -118,8 +116,7 @@ export default {
         Object.assign(localConfig, {
           cacheName: config.cacheName || 'video-info',
           usePathIds: config.usePathIds !== undefined ? config.usePathIds : true,
-          getDuration: config.getDuration !== undefined ? config.getDuration : true,
-          getCodecInfo: config.getCodecInfo !== undefined ? config.getCodecInfo : true,
+          getVideoInfo: config.getVideoInfo !== undefined ? config.getVideoInfo : true,
           videoPaths: config.videoPaths || []
         })
       } catch (err) {

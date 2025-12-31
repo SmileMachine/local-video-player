@@ -15,7 +15,7 @@
    | `PORT`          | `3000`        | 服务端口                                                                                      |
    | `HOST`          | `localhost`   | 想要绑定的地址                                                                                |
    | `NODE_ENV`      | `development` | 环境。可以是 `development` 或 `production`                                                    |
-   | `GET_VID_INFO`  | `false`       | 是否获取视频信息(时长和编码格式)。如果视频文件很多，则可能需要很长时间。需要 `ffmpeg` 支持。   |
+   | `GET_VID_INFO`  | `false`       | 是否使用 ffmpeg 获取视频信息（时长、编码、分辨率等）。如果视频文件很多，则可能需要很长时间。需要 `ffmpeg` 支持。   |
    | `PLAYER_TYPE`   | `Plyr`        | 播放器类型。可以是 `DPlayer` 或 `Plyr`                                                        |
    | `USE_CACHE`     | `false`       | 是否使用上次扫描结果。如果为 true，视频信息将被缓存到 `cache/scan-cache.json`。               |
 
@@ -25,7 +25,7 @@
    {
      "cacheName": "video-info",
      "usePathIds": true,
-     "getDuration": true,
+     "getVideoInfo": true,
      "videoPaths": [
        {
          "name": "Videos",
@@ -42,8 +42,7 @@
    **配置选项说明：**
    - `cacheName`: 缓存文件名称
    - `usePathIds`: 使用 UUID 替代文件路径
-   - `getDuration`: 获取视频时长（需要 `ffmpeg`，视频库较大时可能需要较长时间）
-   - `getCodecInfo`: 获取视频和音频编码信息（需要 `ffmpeg`，显示编码兼容性警告）
+   - `getVideoInfo`: 使用 ffmpeg 获取视频信息，包括时长、编码、分辨率、帧率等（需要 `ffmpeg`，视频库较大时可能需要较长时间）
    - `videoPaths`: 要扫描的视频路径数组
 
    启动服务后也可以在网页界面中修改配置。

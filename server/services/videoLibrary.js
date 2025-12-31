@@ -54,7 +54,7 @@ class VideoLibrary extends EventEmitter {
     const { videoPaths = [], usePathIds = true } = config;
     this.videoScanner = new VideoScanner({
       cacheName: config.cacheName,
-      getInfo: config.getInfo ?? true,
+      getInfo: config.getVideoInfo ?? true,
     });
     this.videos = await this.scanVideoPaths(videoPaths);
     this.secureVideos = this.processPathSecurity(this.videos, usePathIds);

@@ -50,14 +50,9 @@ router.put("/config", async (req, res) => {
     }
 
     // Validate boolean fields
-    if (newConfig.getCodecInfo !== undefined && typeof newConfig.getCodecInfo !== 'boolean') {
-      logger.error("Invalid getCodecInfo value:", newConfig.getCodecInfo);
-      return res.status(400).json({ error: "getCodecInfo must be a boolean" });
-    }
-
-    if (newConfig.getDuration !== undefined && typeof newConfig.getDuration !== 'boolean') {
-      logger.error("Invalid getDuration value:", newConfig.getDuration);
-      return res.status(400).json({ error: "getDuration must be a boolean" });
+    if (newConfig.getVideoInfo !== undefined && typeof newConfig.getVideoInfo !== 'boolean') {
+      logger.error("Invalid getVideoInfo value:", newConfig.getVideoInfo);
+      return res.status(400).json({ error: "getVideoInfo must be a boolean" });
     }
 
     if (newConfig.usePathIds !== undefined && typeof newConfig.usePathIds !== 'boolean') {

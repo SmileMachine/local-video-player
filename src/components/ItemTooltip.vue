@@ -9,58 +9,43 @@
         <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
       </template>
       <template v-else>
-        <div><span class="label">时长</span>{{ formatDuration(item.info.duration) }}</div>
+        <div class="two-column-layout">
+          <div class="info-column">
+            <div class="codec-section">
+              <span class="label">视频</span>
+              <span class="codec-badge" :class="getVideoCodecClass(item.info.video.codec)">
+                {{ item.info.video.codec }}
+              </span>
+              <i v-if="!isVideoCodecSupported(item.info.video.codec)"
+                class="fa-solid fa-circle-exclamation codec-warning"
+                :title="getVideoCodecWarning(item.info.video.codec)"></i>
+            </div>
+            <div><span class="label">时长</span>{{ formatDuration(item.info.duration) }}</div>
+            <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
+            <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
+          </div>
 
-        <!-- 视频编码信息 -->
-        <template v-if="item.info.video">
-          <div class="codec-section">
-            <span class="label">视频编码</span>
-            <span class="codec-badge" :class="getVideoCodecClass(item.info.video.codec)">
-              {{ item.info.video.codec }}
-            </span>
-            <i v-if="!isVideoCodecSupported(item.info.video.codec)"
-               class="fa-solid fa-circle-exclamation codec-warning"
-               :title="getVideoCodecWarning(item.info.video.codec)"></i>
-          </div>
-          <div v-if="item.info.video.width" class="codec-detail">
-            <span class="label">分辨率</span>{{ item.info.video.width }}×{{ item.info.video.height }}
-          </div>
-          <div v-if="item.info.video.fps" class="codec-detail">
-            <span class="label">帧率</span>{{ formatFps(item.info.video.fps) }}
-          </div>
-        </template>
+          <div class="info-column">
+            <div class="codec-section" v-if="item.info.audio">
+              <span class="label">音频</span>
+              <span class="codec-badge" :class="getAudioCodecClass(item.info.audio.codec)">
+                {{ item.info.audio.codec }}
+              </span>
+              <i v-if="!isAudioCodecSupported(item.info.audio.codec)"
+                class="fa-solid fa-circle-exclamation codec-warning"
+                :title="getAudioCodecWarning(item.info.audio.codec)"></i>
+            </div>
+            <div v-if="item.info.video?.width">
+              <span class="label">分辨率</span>{{ item.info.video.width }}×{{ item.info.video.height }}
+            </div>
+            <div v-if="item.info.video?.fps">
+              <span class="label">帧率</span>{{ formatFps(item.info.video.fps) }}
+            </div>
 
-        <!-- 音频编码信息 -->
-        <template v-if="item.info.audio">
-          <div class="codec-section">
-            <span class="label">音频编码</span>
-            <span class="codec-badge" :class="getAudioCodecClass(item.info.audio.codec)">
-              {{ item.info.audio.codec }}
-            </span>
-            <i v-if="!isAudioCodecSupported(item.info.audio.codec)"
-               class="fa-solid fa-circle-exclamation codec-warning"
-               :title="getAudioCodecWarning(item.info.audio.codec)"></i>
+            <div v-if="item.info.audio?.channels">
+              <span class="label">声道</span>{{ item.info.audio.channels }} 声道
+            </div>
           </div>
-          <div v-if="item.info.audio.channels" class="codec-detail">
-            <span class="label">声道</span>{{ item.info.audio.channels }} 声道
-          </div>
-        </template>
-
-        <!-- 向后兼容：旧数据格式 -->
-        <div v-if="!item.info.video && !item.info.audio && item.info.codec">
-          <div><span class="label">编码</span>{{ item.info.codec }}</div>
-        </div>
-
-        <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
-        <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
-
-        <!-- FFmpeg 转码建议 -->
-        <div v-if="getFFmpegSuggestion()" class="ffmpeg-suggestion">
-          <div class="suggestion-header">
-            <i class="fa-solid fa-lightbulb"></i>
-            <span>转码建议：</span>
-          </div>
-          <code class="ffmpeg-command">{{ getFFmpegSuggestion() }}</code>
         </div>
       </template>
     </div>
@@ -153,37 +138,6 @@ export default {
       return warnings[codec?.toLowerCase()] || '该音频编码可能在部分浏览器中不支持'
     }
 
-    // 生成 FFmpeg 转码建议
-    const getFFmpegSuggestion = () => {
-      const { video, audio } = props.item.info || {}
-
-      // 如果编码都支持，不需要转码
-      if ((!video || isVideoCodecSupported(video.codec)) &&
-          (!audio || isAudioCodecSupported(audio.codec))) {
-        return null
-      }
-
-      // 构建 FFmpeg 命令
-      const parts = ['ffmpeg', '-i', 'input.mkv']
-
-      // 视频编码需要转码
-      if (video && !isVideoCodecSupported(video.codec)) {
-        parts.push('-c:v', 'libx264', '-preset', 'medium')
-      } else {
-        parts.push('-c:v', 'copy')
-      }
-
-      // 音频编码需要转码
-      if (audio && !isAudioCodecSupported(audio.codec)) {
-        parts.push('-c:a', 'aac', '-b:a', '192k')
-      } else {
-        parts.push('-c:a', 'copy')
-      }
-
-      parts.push('output.mp4')
-      return parts.join(' ')
-    }
-
     return {
       isDirectory,
       formatDuration,
@@ -195,8 +149,7 @@ export default {
       getVideoCodecClass,
       getAudioCodecClass,
       getVideoCodecWarning,
-      getAudioCodecWarning,
-      getFFmpegSuggestion
+      getAudioCodecWarning
     }
   }
 }
@@ -256,6 +209,22 @@ export default {
   margin: 2px 0;
 }
 
+.two-column-layout {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 20px;
+}
+
+.info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-column > div {
+  margin: 2px 0;
+}
+
 .label {
   display: inline-block;
   width: 5em;
@@ -294,36 +263,5 @@ export default {
   color: #ffb74d;
   font-size: 12px;
   cursor: help;
-}
-
-.codec-detail {
-  margin-left: 5em;
-}
-
-.ffmpeg-suggestion {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.suggestion-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #ffd54f;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.ffmpeg-command {
-  display: block;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 11px;
-  color: #e0e0e0;
-  word-break: break-all;
-  user-select: all;
 }
 </style>

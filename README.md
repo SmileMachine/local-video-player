@@ -17,7 +17,7 @@ You can specify the path to your local video folder in the configuration, and ac
    | `PORT`       | `3000`        | Server port                                                                    |
    | `HOST`       | `localhost`   | Address to bind to                                                             |
    | `NODE_ENV`   | `development` | Environment. Can be either `development` or `production`                       |
-   | `GET_VID_INFO` | `false`      | Whether to fetch video infos like duration and codec. May take a long time if there are many videos. `ffmpeg` is needed. |
+   | `GET_VID_INFO` | `false`      | Whether to fetch video information using ffmpeg (duration, codec, resolution, etc.). May take a long time if there are many videos. Requires `ffmpeg`. |
    | `PLAYER_TYPE` | `Plyr`        | Player type. Can be either `DPlayer` or `Plyr`                                |
    | `USE_CACHE`  | `false`       | Whether to use last scan results. If true, video infos will be cached in `cache/scan-cache.json`. |
 
@@ -27,7 +27,7 @@ You can specify the path to your local video folder in the configuration, and ac
    {
      "cacheName": "video-info",
      "usePathIds": true,
-     "getDuration": true,
+     "getVideoInfo": true,
      "videoPaths": [
        {
          "name": "Videos",
@@ -44,8 +44,7 @@ You can specify the path to your local video folder in the configuration, and ac
    **Configuration options:**
    - `cacheName`: Name of the cache file
    - `usePathIds`: Use UUID instead of file paths
-   - `getDuration`: Fetch video duration (requires `ffmpeg`, may take time for large libraries)
-   - `getCodecInfo`: Fetch video and audio codec information (requires `ffmpeg`, shows codec compatibility warnings)
+   - `getVideoInfo`: Fetch video information using ffmpeg, including duration, codec, resolution, frame rate, etc. (requires `ffmpeg`, may take time for large libraries)
    - `videoPaths`: Array of video paths to scan
 
    You can also modify the configuration through the web UI after starting the server.
