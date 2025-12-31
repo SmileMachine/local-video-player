@@ -176,20 +176,21 @@ body.resizing::after {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Appbar - 固定顶部栏 */
+/* Appbar - 浮在 content 上方 */
 .appbar {
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
-  background: rgba(30, 30, 30, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(30, 30, 30, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 16px;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 /* Directory Tree Scroll - 滚动区域 */
@@ -202,6 +203,7 @@ body.resizing::after {
 /* Directory Tree - 内容区域 */
 .directory-tree {
   padding: 16px;
+  padding-top: 70px; /* 为 appbar 留出空间 */
 }
 
 /* 播放列表样式 */
@@ -221,6 +223,7 @@ body.resizing::after {
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative; /* 创建层叠上下文 */
 }
 
 /* 自定义滚动条样式 */
