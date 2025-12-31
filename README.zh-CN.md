@@ -43,6 +43,7 @@
    - `cacheName`: 缓存文件名称
    - `usePathIds`: 使用 UUID 替代文件路径
    - `getDuration`: 获取视频时长（需要 `ffmpeg`，视频库较大时可能需要较长时间）
+   - `getCodecInfo`: 获取视频和音频编码信息（需要 `ffmpeg`，显示编码兼容性警告）
    - `videoPaths`: 要扫描的视频路径数组
 
    启动服务后也可以在网页界面中修改配置。
@@ -79,3 +80,31 @@
 | `Shift` + `Enter` | 切换侧边栏 |
 | `H` | 显示/隐藏快捷键指南 |
 | `Esc` | 关闭快捷键指南 |
+
+## 编码兼容性
+
+在设置中启用后，播放器会检测并显示视频/音频编码信息。
+
+### 支持的编码格式
+
+**视频编码：**
+- ✅ H.264 (AVC) - 广泛支持
+- ✅ VP8/VP9 - Chrome/Firefox
+- ✅ AV1 - 现代浏览器
+- ⚠️ H.265/HEVC - 仅 Safari 支持（Chrome/Firefox 不支持）
+
+**音频编码：**
+- ✅ AAC - 广泛支持
+- ✅ MP3 - 广泛支持
+- ✅ Opus/Vorbis - Chrome/Firefox
+- ✅ FLAC - 现代浏览器
+- ⚠️ DTS/AC3/E-AC3 - 不支持（需要转码）
+
+### 容器格式支持
+
+- ✅ MP4 - 最佳兼容性
+- ✅ WebM - Chrome/Firefox
+- ⚠️ MKV - 浏览器支持有限
+- ⚠️ AVI - 不支持（需要转码）
+
+**注意**：不支持的编码可能需要使用 FFmpeg 进行转码。播放器会在鼠标悬停到不兼容编码的视频时提供 FFmpeg 命令建议。

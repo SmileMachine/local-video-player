@@ -49,6 +49,22 @@ router.put("/config", async (req, res) => {
       }
     }
 
+    // Validate boolean fields
+    if (newConfig.getCodecInfo !== undefined && typeof newConfig.getCodecInfo !== 'boolean') {
+      logger.error("Invalid getCodecInfo value:", newConfig.getCodecInfo);
+      return res.status(400).json({ error: "getCodecInfo must be a boolean" });
+    }
+
+    if (newConfig.getDuration !== undefined && typeof newConfig.getDuration !== 'boolean') {
+      logger.error("Invalid getDuration value:", newConfig.getDuration);
+      return res.status(400).json({ error: "getDuration must be a boolean" });
+    }
+
+    if (newConfig.usePathIds !== undefined && typeof newConfig.usePathIds !== 'boolean') {
+      logger.error("Invalid usePathIds value:", newConfig.usePathIds);
+      return res.status(400).json({ error: "usePathIds must be a boolean" });
+    }
+
     // Write to config file
     fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), "utf8");
     logger.info("Config saved successfully");

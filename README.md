@@ -45,6 +45,7 @@ You can specify the path to your local video folder in the configuration, and ac
    - `cacheName`: Name of the cache file
    - `usePathIds`: Use UUID instead of file paths
    - `getDuration`: Fetch video duration (requires `ffmpeg`, may take time for large libraries)
+   - `getCodecInfo`: Fetch video and audio codec information (requires `ffmpeg`, shows codec compatibility warnings)
    - `videoPaths`: Array of video paths to scan
 
    You can also modify the configuration through the web UI after starting the server.
@@ -81,3 +82,31 @@ You can specify the path to your local video folder in the configuration, and ac
 | `Shift` + `Enter` | Toggle sidebar |
 | `H` | Show/hide shortcuts guide |
 | `Esc` | Close shortcuts guide |
+
+## Codec Compatibility
+
+When enabled in settings, the player detects and displays video/audio codec information.
+
+### Supported Codecs
+
+**Video Codecs:**
+- ✅ H.264 (AVC) - Widely supported
+- ✅ VP8/VP9 - Chrome/Firefox
+- ✅ AV1 - Modern browsers
+- ⚠️ H.265/HEVC - Safari only (not supported in Chrome/Firefox)
+
+**Audio Codecs:**
+- ✅ AAC - Widely supported
+- ✅ MP3 - Widely supported
+- ✅ Opus/Vorbis - Chrome/Firefox
+- ✅ FLAC - Modern browsers
+- ⚠️ DTS/AC3/E-AC3 - Not supported (requires transcoding)
+
+### Container Format Support
+
+- ✅ MP4 - Best compatibility
+- ✅ WebM - Chrome/Firefox
+- ⚠️ MKV - Limited browser support
+- ⚠️ AVI - Not supported (requires transcoding)
+
+**Note**: Videos with unsupported codecs may need transcoding using FFmpeg. The player provides FFmpeg command suggestions when hovering over videos with incompatible codecs.

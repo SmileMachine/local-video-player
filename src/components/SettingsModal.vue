@@ -48,6 +48,10 @@
                 <input type="checkbox" v-model="localConfig.getDuration" />
                 <span>获取视频时长</span>
               </label>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="localConfig.getCodecInfo" />
+                <span>获取编码信息</span>
+              </label>
               <div class="input-group">
                 <label>缓存名称:</label>
                 <input
@@ -91,6 +95,7 @@ export default {
       cacheName: 'video-info',
       usePathIds: true,
       getDuration: true,
+      getCodecInfo: true,
       videoPaths: []
     })
 
@@ -114,6 +119,7 @@ export default {
           cacheName: config.cacheName || 'video-info',
           usePathIds: config.usePathIds !== undefined ? config.usePathIds : true,
           getDuration: config.getDuration !== undefined ? config.getDuration : true,
+          getCodecInfo: config.getCodecInfo !== undefined ? config.getCodecInfo : true,
           videoPaths: config.videoPaths || []
         })
       } catch (err) {

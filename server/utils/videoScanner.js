@@ -69,14 +69,48 @@ export class VideoScanner {
         }
 
         const duration = parseFloat(metadata.format.duration);
-        // Find video stream and get its codec
-        const codec =
-          metadata.streams?.find((stream) => stream.codec_type === "video")
-            ?.codec_name ?? "[Unknown]";
+
+        // Extract video stream information
+        const videoStream = metadata.streams?.find(
+          (stream) => stream.codec_type === "video"
+        );
+
+        // Extract audio stream information
+        const audioStream = metadata.streams?.find(
+          (stream) => stream.codec_type === "audio"
+        );
+
+        // Parse frame rate from "num/den" format to number
+        let fps = null;
+        if (videoStream?.r_frame_rate) {
+          const [num, den] = videoStream.r_frame_rate.split("/");
+          fps = den ? parseInt(num) / parseInt(den) : parseInt(num);
+        }
+
+        const codecInfo = {
+          duration,
+          video: videoStream
+            ? {
+                codec: videoStream.codec_name,
+                profile: videoStream.profile || null,
+                width: videoStream.width || null,
+                height: videoStream.height || null,
+                fps: fps || null,
+              }
+            : null,
+          audio: audioStream
+            ? {
+                codec: audioStream.codec_name,
+                profile: audioStream.profile || null,
+                channels: audioStream.channels || null,
+                sampleRate: audioStream.sample_rate || null,
+              }
+            : null,
+        };
 
         // Save to cache
-        this.cache.set(cacheKey, { duration, codec });
-        resolve({ duration, codec });
+        this.cache.set(cacheKey, codecInfo);
+        resolve(codecInfo);
       });
     });
   }
