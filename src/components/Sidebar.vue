@@ -202,7 +202,7 @@ body.resizing::after {
   left: 0;
   right: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--color-surface, #1e1e1e) 70%, transparent);
+  background: color-mix(in srgb, var(--color-background, #242424) 70%, transparent);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
@@ -229,7 +229,7 @@ body.resizing::after {
 .playlist {
   position: relative;
   height: 100%;
-  background-color: var(--color-surface, #1e1e1e);
+  background-color: var(--color-background, #242424);
   flex-shrink: 0;
   margin: 0;
   transition: width 0.3s ease-out;

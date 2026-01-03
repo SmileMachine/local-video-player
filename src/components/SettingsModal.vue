@@ -47,8 +47,8 @@
               <label class="checkbox-label">
                 <input type="checkbox" v-model="localConfig.getVideoInfo" />
                 <span>获取视频信息（时长、编码等）</span>
-                <small style="display: block; margin-left: 30px; color: #888; margin-top: 4px;">
-                  使用 ffmpeg 获取视频详细信息，可能较耗时
+                <small style="display: block; margin-left: 30px; color: var(--color-text-muted); margin-top: 4px;">
+                  使用 <code>ffmpeg</code> 获取视频详细信息，可能较耗时
                 </small>
               </label>
               <div class="input-group">
@@ -304,6 +304,7 @@ export default {
 }
 
 .setting-section h3 {
+  text-align: left;
   margin: 0 0 16px 0;
   font-size: 16px;
   font-weight: 600;
@@ -407,6 +408,7 @@ export default {
   height: 18px;
   cursor: pointer;
   flex-shrink: 0;
+  accent-color: var(--color-primary, #a0a0a0);
 }
 
 .checkbox-label span {

@@ -152,7 +152,7 @@ export default {
   top: calc(100% + 12px);
   left: 0;
   width: 320px;
-  background: var(--color-surface, #1e1e1e);
+  background: var(--color-background, #242424);
   border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);

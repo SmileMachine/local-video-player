@@ -11,15 +11,15 @@
 
 :root {
   /* 主题 CSS 变量 - 默认经典深灰主题 */
-  --color-primary: #646cff;
-  --color-primary-hover: #747bff;
+  --color-primary: #a0a0a0;
+  --color-primary-hover: #b0b0b0;
   --color-background: #242424;
   --color-surface: #1e1e1e;
   --color-surface-hover: #2d2d2d;
   --color-text: rgba(255, 255, 255, 0.87);
   --color-text-muted: rgba(255, 255, 255, 0.6);
   --color-border: rgba(255, 255, 255, 0.08);
-  --color-accent: #2196f3;
+  --color-accent: #808080;
   --color-scrollbar: rgba(61, 61, 61, 0.8);
   --color-scrollbar-hover: rgba(77, 77, 77, 0.9);
   --emoji-font: 'Noto Color Emoji';
