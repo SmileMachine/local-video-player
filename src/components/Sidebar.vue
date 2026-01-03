@@ -12,6 +12,7 @@
         <button class="settings-button" @click="$emit('open-settings')" title="设置">
           <i class="fas fa-cog"></i>
         </button>
+        <ThemePicker />
         <button class="help-button" @click="$emit('open-shortcuts')" title="快捷键">
           <i class="fas fa-question"></i>
         </button>
@@ -32,10 +33,11 @@
 
 <script>
 import DirectoryItem from './DirectoryItem.vue'
+import ThemePicker from './ThemePicker.vue'
 import { useSidebar } from '../composables/useSidebar'
 import { onMounted } from 'vue'
 export default {
-  components: { DirectoryItem },
+  components: { DirectoryItem, ThemePicker },
   props: {
     videos: Array,
     currentId: String,
@@ -75,7 +77,7 @@ export default {
 .resizer {
   width: 5px;
   height: 100%;
-  background-color: #2d2d2d;
+  background-color: var(--color-surface-hover, #2d2d2d);
   cursor: col-resize;
   transition: background-color 0.2s;
   position: relative;
@@ -84,7 +86,7 @@ export default {
 
 .resizer:hover,
 .resizer:active {
-  background-color: #2196f3;
+  background-color: var(--color-accent, #2196f3);
 }
 
 /* 拖动时禁止选择文本 */
@@ -111,10 +113,10 @@ body.resizing::after {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
   border: none;
   outline: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.7));
   cursor: pointer;
   font-size: 16px;
   z-index: 20;
@@ -135,7 +137,8 @@ body.resizing::after {
 }
 
 .toggle-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.2));
+  color: var(--color-text, white);
 }
 
 .toggle-button.outside {
@@ -166,9 +169,9 @@ body.resizing::after {
 .help-button {
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
   outline: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.7));
   cursor: pointer;
   font-size: 16px;
   padding: 0;
@@ -187,9 +190,9 @@ body.resizing::after {
 
 .settings-button:hover,
 .help-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.15));
+  border-color: var(--color-border, rgba(255, 255, 255, 0.3));
+  color: var(--color-text, white);
 }
 
 /* Appbar - 浮在 content 上方 */
@@ -199,10 +202,10 @@ body.resizing::after {
   left: 0;
   right: 0;
   z-index: 10;
-  background: rgba(30, 30, 30, 0.5);
+  background: color-mix(in srgb, var(--color-surface, #1e1e1e) 70%, transparent);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -226,12 +229,12 @@ body.resizing::after {
 .playlist {
   position: relative;
   height: 100%;
-  background-color: #1e1e1e;
+  background-color: var(--color-surface, #1e1e1e);
   flex-shrink: 0;
   margin: 0;
   transition: width 0.3s ease-out;
   overflow: visible;
-  color: #e0e0e0;
+  color: var(--color-text, #e0e0e0);
 }
 
 /* Playlist content */
@@ -252,11 +255,11 @@ body.resizing::after {
 }
 
 .directory-tree-scroll::-webkit-scrollbar-thumb {
-  background: rgba(61, 61, 61, 0.8);
+  background: var(--color-scrollbar, rgba(61, 61, 61, 0.8));
   border-radius: 4px;
 }
 
 .directory-tree-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(77, 77, 77, 0.9);
+  background: var(--color-scrollbar-hover, rgba(77, 77, 77, 0.9));
 }
 </style>

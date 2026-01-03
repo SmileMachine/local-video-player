@@ -230,14 +230,14 @@ export default {
 }
 
 .modal-content {
-  background-color: #242424;
+  background-color: var(--color-background, #242424);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow: hidden;
-  border: 1px solid #3d3d3d;
+  border: 1px solid var(--color-border, #3d3d3d);
   display: flex;
   flex-direction: column;
 }
@@ -247,20 +247,20 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #3d3d3d;
+  border-bottom: 1px solid var(--color-border, #3d3d3d);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text, #e0e0e0);
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #a0a0a0;
+  color: var(--color-text-muted, #a0a0a0);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -276,8 +276,8 @@ export default {
 }
 
 .close-button:hover {
-  background-color: #3d3d3d;
-  color: #e0e0e0;
+  background-color: var(--color-surface-hover, #3d3d3d);
+  color: var(--color-text, #e0e0e0);
 }
 
 .modal-body {
@@ -290,7 +290,7 @@ export default {
 .error {
   text-align: center;
   padding: 40px;
-  color: #b0b0b0;
+  color: var(--color-text-muted, #b0b0b0);
 }
 
 .error {
@@ -307,7 +307,7 @@ export default {
   margin: 0 0 16px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--color-text, #e0e0e0);
 }
 
 .video-paths {
@@ -325,11 +325,11 @@ export default {
 .input-name,
 .input-path,
 .input-text {
-  background-color: #1e1e1e;
-  border: 1px solid #3d3d3d;
+  background-color: var(--color-surface, #1e1e1e);
+  border: 1px solid var(--color-border, #3d3d3d);
   border-radius: 6px;
   padding: 8px 12px;
-  color: #e0e0e0;
+  color: var(--color-text, #e0e0e0);
   font-size: 14px;
   transition: border-color 0.2s ease;
 }
@@ -338,7 +338,7 @@ export default {
 .input-path:focus,
 .input-text:focus {
   outline: none;
-  border-color: #2196f3;
+  border-color: var(--color-primary, #2196f3);
 }
 
 .input-name {
@@ -376,9 +376,9 @@ export default {
 }
 
 .btn-add {
-  background-color: #2d2d2d;
-  border: 1px dashed #4d4d4d;
-  color: #e0e0e0;
+  background-color: var(--color-surface-hover, #2d2d2d);
+  border: 1px dashed var(--color-border, #4d4d4d);
+  color: var(--color-text, #e0e0e0);
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -387,8 +387,8 @@ export default {
 }
 
 .btn-add:hover {
-  background-color: #3d3d3d;
-  border-color: #5d5d5d;
+  background-color: var(--color-surface-hover, #3d3d3d);
+  border-color: var(--color-text-muted, #5d5d5d);
 }
 
 .checkbox-label {
@@ -397,7 +397,7 @@ export default {
   gap: 12px;
   padding: 8px 0;
   cursor: pointer;
-  color: #b0b0b0;
+  color: var(--color-text-muted, #b0b0b0);
   font-size: 14px;
   text-align: left;
 }
@@ -421,7 +421,7 @@ export default {
 }
 
 .input-group label {
-  color: #b0b0b0;
+  color: var(--color-text-muted, #b0b0b0);
   font-size: 14px;
   text-align: left;
   flex-shrink: 0;
@@ -436,7 +436,7 @@ export default {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid #3d3d3d;
+  border-top: 1px solid var(--color-border, #3d3d3d);
 }
 
 .btn-primary,
@@ -449,13 +449,13 @@ export default {
 }
 
 .btn-primary {
-  background-color: #2196f3;
+  background-color: var(--color-primary, #2196f3);
   border: none;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #1976d2;
+  background-color: var(--color-primary-hover, #1976d2);
 }
 
 .btn-primary:disabled {
@@ -464,13 +464,13 @@ export default {
 }
 
 .btn-secondary {
-  background-color: #2d2d2d;
-  border: 1px solid #3d3d3d;
-  color: #e0e0e0;
+  background-color: var(--color-surface-hover, #2d2d2d);
+  border: 1px solid var(--color-border, #3d3d3d);
+  color: var(--color-text, #e0e0e0);
 }
 
 .btn-secondary:hover {
-  background-color: #3d3d3d;
+  background-color: var(--color-surface-hover, #3d3d3d);
 }
 
 /* Modal transition animations */

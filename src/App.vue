@@ -15,12 +15,13 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
 import ShortcutsGuideModal from './components/ShortcutsGuideModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import { useVideoLibrary } from './composables/useVideoLibrary'
+import { useTheme } from './composables/useTheme'
 
 export default {
   name: 'App',
@@ -39,6 +40,8 @@ export default {
       showShortcutsModal,
     } = useVideoLibrary()
 
+    const { initTheme } = useTheme()
+
     const showSettingsModal = ref(false)
     const playerType = import.meta.env.VITE_PLAYER_TYPE || "Plyr"
 
@@ -46,6 +49,11 @@ export default {
       // Reload the page to apply new configuration
       window.location.reload()
     }
+
+    // 初始化主题
+    onMounted(() => {
+      initTheme()
+    })
 
     return {
       // video library

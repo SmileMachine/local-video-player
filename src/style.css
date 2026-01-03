@@ -1,13 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Color+Emoji&display=swap');
 
+/* Twemoji Mozilla 字体 */
+@font-face {
+  font-family: 'Twemoji Mozilla';
+  src: url('https://cdn.jsdelivr.net/npm/twemoji-colr-font@latest/twemoji.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  font-family: "Segoe UI", "Segoe UI Emoji", "Noto Sans", "Noto Color Emoji", system-ui, sans-serif;
+  /* 主题 CSS 变量 - 默认经典深灰主题 */
+  --color-primary: #646cff;
+  --color-primary-hover: #747bff;
+  --color-background: #242424;
+  --color-surface: #1e1e1e;
+  --color-surface-hover: #2d2d2d;
+  --color-text: rgba(255, 255, 255, 0.87);
+  --color-text-muted: rgba(255, 255, 255, 0.6);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-accent: #2196f3;
+  --color-scrollbar: rgba(61, 61, 61, 0.8);
+  --color-scrollbar-hover: rgba(77, 77, 77, 0.9);
+  --emoji-font: 'Noto Color Emoji';
+
+  font-family: "Segoe UI", "Segoe UI Emoji", "Noto Sans", var(--emoji-font), system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text);
+  background-color: var(--color-background);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,12 +40,12 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-primary);
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--color-primary-hover);
 }
 
 body {
@@ -45,13 +68,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-surface);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-primary);
 }
 
 button:focus,
@@ -93,17 +116,13 @@ button:focus-visible {
 
 ::-webkit-scrollbar-track {
   background: transparent;
-  /* 滚动条轨道背景 */
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(128, 128, 128, 0.3);
-  /* 滚动条颜色，半透明灰色 */
+  background-color: var(--color-scrollbar);
   border-radius: 4px;
-  /* 圆角 */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(128, 128, 128, 0.7);
-  /* 悬停时加深颜色 */
+  background-color: var(--color-scrollbar-hover);
 }

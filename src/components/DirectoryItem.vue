@@ -168,15 +168,17 @@ export default {
 }
 
 .item-header:hover {
-  background-color: #e0e0e028;
+  background-color: var(--color-surface-hover, #e0e0e028);
 }
 
 .item-header.active {
-  background-color: #d0d0d03a;
+  background-color: var(--color-primary, #646cff);
+  background-color: color-mix(in srgb, var(--color-primary, #646cff) 25%, transparent);
 }
 
 .icon {
   margin-right: 8px;
+  font-family: var(--emoji-font, 'Noto Color Emoji');
 }
 
 .name {
@@ -188,7 +190,7 @@ export default {
 
 .duration {
   margin-left: 8px;
-  color: #666;
+  color: var(--color-text-muted, #666);
   font-size: 0.9em;
 }
 
