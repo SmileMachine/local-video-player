@@ -16,12 +16,23 @@
         <button class="help-button" @click="$emit('open-shortcuts')" title="快捷键">
           <i class="fas fa-question"></i>
         </button>
+        <div class="sort-controls">
+          <select class="sort-select" :value="sortBy" @change="$emit('change-sort-by', $event.target.value)" title="排序依据">
+            <option value="name">名称</option>
+            <option value="duration">时长</option>
+            <option value="size">大小</option>
+            <option value="mtime">修改时间</option>
+          </select>
+          <button class="sort-order-button" @click="$emit('toggle-sort-order')" :title="sortOrder === 'asc' ? '升序' : '降序'">
+            {{ sortOrder === 'asc' ? '↑' : '↓' }}
+          </button>
+        </div>
       </div>
       <!-- Directory Tree Scroll - 滚动区域 -->
       <div class="directory-tree-scroll">
         <!-- Directory Tree - 内容 -->
         <div class="directory-tree">
-          <DirectoryItem v-for="item in videos" :path="[item.name]" :item="item" :currentId="currentId"
+          <DirectoryItem v-for="item in videos" :key="item.id || item.name" :path="[item.name]" :item="item" :currentId="currentId"
             :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
         </div>
       </div>
@@ -42,8 +53,16 @@ export default {
     videos: Array,
     currentId: String,
     currentPath: Array,
+    sortBy: {
+      type: String,
+      default: 'name'
+    },
+    sortOrder: {
+      type: String,
+      default: 'asc'
+    }
   },
-  emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings', 'open-shortcuts'],
+  emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings', 'open-shortcuts', 'change-sort-by', 'toggle-sort-order'],
   setup() {
     const {
       sidebarWidth,
@@ -111,7 +130,7 @@ body.resizing::after {
 /* toggle */
 .toggle-button {
   position: absolute;
-  top: 10px;
+  top: 12px;
   right: 10px;
   background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
   border: none;
@@ -123,7 +142,7 @@ body.resizing::after {
   padding: 0;
   width: 36px;
   height: 36px;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.6s ease-in-out, background 0s;
   backdrop-filter: blur(2px);
   display: flex;
@@ -166,7 +185,8 @@ body.resizing::after {
 
 /* Appbar buttons */
 .settings-button,
-.help-button {
+.help-button,
+.sort-order-button {
   width: 36px;
   height: 36px;
   background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
@@ -183,16 +203,48 @@ body.resizing::after {
 }
 
 .settings-button:focus,
-.help-button:focus {
+.help-button:focus,
+.sort-order-button:focus {
   outline: none;
   box-shadow: none;
 }
 
 .settings-button:hover,
-.help-button:hover {
+.help-button:hover,
+.sort-order-button:hover {
   background: var(--color-surface-hover, rgba(255, 255, 255, 0.15));
   border-color: var(--color-border, rgba(255, 255, 255, 0.3));
   color: var(--color-text, white);
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  /* margin right is for the floating toggle button */
+  margin-right: 36px;
+}
+
+.sort-select {
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.2));
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.1));
+  color: var(--color-text, #fff);
+  padding: 0 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--color-accent, #2196f3);
+}
+
+.sort-select option {
+  background: var(--color-background, #242424);
+  color: var(--color-text, #fff);
 }
 
 /* Appbar - 浮在 content 上方 */

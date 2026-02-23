@@ -1,6 +1,10 @@
 import { ref, computed, onMounted, watch } from "vue";
 
 let instance = null;
+const SORT_CONFIG_KEY = "video-sort-config";
+const DEFAULT_SORT_BY = "name";
+const DEFAULT_SORT_ORDER = "asc";
+const SORT_FIELDS = ["name", "duration", "size", "mtime"];
 
 export function useVideoLibrary() {
   if (instance) {
@@ -13,8 +17,23 @@ export function useVideoLibrary() {
       ? JSON.parse(localStorage.getItem("currentPath"))
       : []
   );
-  const flatVideoList = ref([]);
   const showShortcutsModal = ref(false);
+  const sortConfig = (() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(SORT_CONFIG_KEY) || "{}");
+      return {
+        by: SORT_FIELDS.includes(parsed.by) ? parsed.by : DEFAULT_SORT_BY,
+        order: parsed.order === "desc" ? "desc" : DEFAULT_SORT_ORDER,
+      };
+    } catch {
+      return {
+        by: DEFAULT_SORT_BY,
+        order: DEFAULT_SORT_ORDER,
+      };
+    }
+  })();
+  const sortBy = ref(sortConfig.by);
+  const sortOrder = ref(sortConfig.order);
 
   const currentVideoUrl = computed(() => {
     if (!currentVideoId.value) return "";
@@ -62,6 +81,27 @@ export function useVideoLibrary() {
     addEventListener("keydown", handleKeydown);
   });
 
+  const saveSortConfig = () => {
+    localStorage.setItem(
+      SORT_CONFIG_KEY,
+      JSON.stringify({
+        by: sortBy.value,
+        order: sortOrder.value,
+      })
+    );
+  };
+
+  const setSortBy = (newSortBy) => {
+    if (!SORT_FIELDS.includes(newSortBy)) return;
+    sortBy.value = newSortBy;
+    saveSortConfig();
+  };
+
+  const toggleSortOrder = () => {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+    saveSortConfig();
+  };
+
   // Fetch videos from server
   const fetchVideos = async () => {
     try {
@@ -70,12 +110,9 @@ export function useVideoLibrary() {
       videos.value = await response.json();
       const currentVideo = findVideoByPath(videos.value, currentPath.value);
       currentVideoId.value = currentVideo?.id || "";
-      // 生成扁平化列表
-      flatVideoList.value = flattenVideos(videos.value);
     } catch (error) {
       console.error("Error fetching videos:", error);
       videos.value = [];
-      flatVideoList.value = [];
     }
   };
 
@@ -122,11 +159,79 @@ export function useVideoLibrary() {
     return result;
   };
 
+  const compareText = (a, b) =>
+    String(a || "").localeCompare(String(b || ""), "zh-Hans-CN", {
+      numeric: true,
+      sensitivity: "base",
+    });
+
+  const parseMtime = (value) => {
+    if (typeof value === "number") return value;
+    const timestamp = Date.parse(value || 0);
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  };
+
+  const getSortValue = (item) => {
+    switch (sortBy.value) {
+      case "duration":
+        return Number(item?.info?.duration || 0);
+      case "size":
+        return Number(item?.size || 0);
+      case "mtime":
+        return parseMtime(item?.mtime);
+      case "name":
+      default:
+        return item?.name || "";
+    }
+  };
+
+  const compareItems = (a, b) => {
+    // Keep directory entries before file entries for a predictable tree layout.
+    if (a.type !== b.type) {
+      return a.type === "directory" ? -1 : 1;
+    }
+
+    let result = 0;
+    const leftValue = getSortValue(a);
+    const rightValue = getSortValue(b);
+
+    if (sortBy.value === "name") {
+      result = compareText(leftValue, rightValue);
+    } else {
+      result =
+        Number(leftValue) === Number(rightValue)
+          ? 0
+          : Number(leftValue) > Number(rightValue)
+          ? 1
+          : -1;
+    }
+
+    if (result === 0) {
+      result = compareText(a?.name, b?.name);
+    }
+
+    return sortOrder.value === "asc" ? result : -result;
+  };
+
+  const sortVideoTree = (items) => {
+    return [...items]
+      .map((item) =>
+        item.type === "directory"
+          ? {
+              ...item,
+              children: sortVideoTree(item.children || []),
+            }
+          : { ...item }
+      )
+      .sort(compareItems);
+  };
+
+  const sortedVideos = computed(() => sortVideoTree(videos.value));
+  const flatVideoList = computed(() => flattenVideos(sortedVideos.value));
+
   // 获取当前视频在列表中的索引
   const getCurrentIndex = () => {
-    return flatVideoList.value.findIndex(
-      (item) => item.id === currentVideoId.value
-    );
+    return flatVideoList.value.findIndex((item) => item.id === currentVideoId.value);
   };
 
   // 播放指定索引的视频
@@ -178,6 +283,7 @@ export function useVideoLibrary() {
 
   instance = {
     videos,
+    sortedVideos,
     currentVideoId,
     // currentVideoUrl,
     // currentVideoInfo,
@@ -185,6 +291,10 @@ export function useVideoLibrary() {
     currentVideoInfo,
     currentPath,
     flatVideoList,
+    sortBy,
+    sortOrder,
+    setSortBy,
+    toggleSortOrder,
     selectVideo,
     handleKeydown,
     showShortcutsModal,

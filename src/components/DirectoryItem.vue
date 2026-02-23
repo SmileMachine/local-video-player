@@ -17,7 +17,7 @@
 
     <Transition name="expand">
       <div v-if="isDirectory && isExpanded" class="children">
-        <DirectoryItem v-for="child in item.children" :path="path.concat(child.name)" :item="child"
+        <DirectoryItem v-for="child in item.children" :key="child.id || child.name" :path="path.concat(child.name)" :item="child"
           :currentId="currentId" :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
       </div>
     </Transition>

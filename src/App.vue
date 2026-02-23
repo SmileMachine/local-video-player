@@ -1,10 +1,14 @@
 <template>
   <div class="app-container">
     <Sidebar
-      :videos="videos"
+      :videos="sortedVideos"
       :current-id="currentVideoId"
       :current-path="currentPath"
+      :sort-by="sortBy"
+      :sort-order="sortOrder"
       @select-video="selectVideo"
+      @change-sort-by="setSortBy"
+      @toggle-sort-order="toggleSortOrder"
       @open-settings="showSettingsModal = true"
       @open-shortcuts="showShortcutsModal = true"
     />
@@ -34,8 +38,13 @@ export default {
   setup() {
     const {
       videos,
+      sortedVideos,
       currentVideoId,
       currentPath,
+      sortBy,
+      sortOrder,
+      setSortBy,
+      toggleSortOrder,
       selectVideo,
       showShortcutsModal,
     } = useVideoLibrary()
@@ -59,8 +68,13 @@ export default {
       // video library
       playerType,
       videos,
+      sortedVideos,
       currentVideoId,
       currentPath,
+      sortBy,
+      sortOrder,
+      setSortBy,
+      toggleSortOrder,
       selectVideo,
       showShortcutsModal,
       showSettingsModal,
