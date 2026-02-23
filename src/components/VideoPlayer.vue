@@ -29,22 +29,24 @@ export default {
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
+    const buildHistoryKey = (vidKey) => Array.isArray(vidKey) ? vidKey.join(',') : String(vidKey || '')
 
     const { currentVideoInfo } = useVideoLibrary()
 
     // Get the saved playback time
     const loadVideoTime = (videoUrl) => {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
-      return history[videoUrl]?.time || 0
+      return history[buildHistoryKey(videoUrl)]?.time || 0
     }
 
     // Save the playback time
     const saveVideoTime = (vid_key, currentTime) => {
       let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
+      const historyKey = buildHistoryKey(vid_key)
 
       // If the number of records exceeds the maximum, delete the earliest accessed record
       const keys = Object.keys(history)
-      if (keys.length >= MAX_HISTORY_ITEMS && !history[vid_key]) {
+      if (keys.length >= MAX_HISTORY_ITEMS && !history[historyKey]) {
         // Remove the earliest accessed record
         const earliest = keys.reduce((earliest, key) => {
           if (!earliest || history[key].accessedAt < history[earliest].accessedAt) {
@@ -59,12 +61,18 @@ export default {
       }
 
       // Update the playback time and the access time
-      history[vid_key] = {
+      history[historyKey] = {
         time: currentTime,
         accessedAt: Date.now()
       }
 
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
+      window.dispatchEvent(new CustomEvent('video-progress-updated', {
+        detail: {
+          key: historyKey,
+          time: currentTime
+        }
+      }))
     }
 
     const focusVideo = () => {

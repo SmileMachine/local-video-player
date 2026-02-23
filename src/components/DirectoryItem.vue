@@ -7,6 +7,12 @@
         '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
       <span class="duration">{{ formatDuration(item.info.duration) }}</span>
+      <span v-if="!isDirectory" class="progress-ring" :title="`观看进度 ${watchProgress}%`">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle class="progress-ring-track" cx="10" cy="10" r="7" />
+          <circle class="progress-ring-value" cx="10" cy="10" r="7" :style="{ strokeDashoffset: progressStrokeOffset }" />
+        </svg>
+      </span>
     </div>
 
     <Transition name="expand">
@@ -21,9 +27,13 @@
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import moment from 'moment'
 import ItemTooltip from './ItemTooltip.vue'
+
+const HISTORY_KEY = 'video-time-history'
+const PROGRESS_RING_RADIUS = 7
+const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS
 
 export default {
   name: 'DirectoryItem',
@@ -52,8 +62,46 @@ export default {
     const showingTooltip = ref(false)
     const tooltipStyle = ref({})
     const itemRef = ref(null)
+    const watchedSeconds = ref(0)
 
     const isDirectory = computed(() => props.item.type === 'directory')
+    const historyKey = computed(() => Array.isArray(props.path) ? props.path.join(',') : String(props.path || ''))
+    const watchProgress = computed(() => {
+      if (isDirectory.value) {
+        return 0
+      }
+      const totalDuration = Number(props.item?.info?.duration || 0)
+      if (totalDuration <= 0) {
+        return 0
+      }
+      const percent = Math.round((watchedSeconds.value / totalDuration) * 100)
+      return Math.min(100, Math.max(0, percent))
+    })
+    const progressStrokeOffset = computed(() => {
+      return `${PROGRESS_RING_CIRCUMFERENCE * (1 - watchProgress.value / 100)}px`
+    })
+
+    const refreshVideoProgress = () => {
+      if (isDirectory.value) {
+        watchedSeconds.value = 0
+        return
+      }
+
+      try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
+        watchedSeconds.value = Number(history[historyKey.value]?.time || 0)
+      } catch {
+        watchedSeconds.value = 0
+      }
+    }
+
+    const handleProgressUpdated = (event) => {
+      const detail = event?.detail || {}
+      if (detail.key !== historyKey.value) {
+        return
+      }
+      watchedSeconds.value = Number(detail.time || 0)
+    }
 
     const showTooltip = (event) => {
       const rect = event.currentTarget.getBoundingClientRect()
@@ -135,6 +183,15 @@ export default {
         })
       }
     }, { immediate: true })
+    watch(historyKey, refreshVideoProgress, { immediate: true })
+
+    onMounted(() => {
+      window.addEventListener('video-progress-updated', handleProgressUpdated)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('video-progress-updated', handleProgressUpdated)
+    })
 
     return {
       isExpanded,
@@ -147,7 +204,9 @@ export default {
       handleSelect,
       randomSelect,
       formatDuration,
-      itemRef
+      itemRef,
+      watchProgress,
+      progressStrokeOffset
     }
   }
 }
@@ -192,6 +251,37 @@ export default {
   margin-left: 8px;
   color: var(--color-text-muted, #666);
   font-size: 0.9em;
+}
+
+.progress-ring {
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  color: var(--color-primary, #646cff);
+}
+
+.progress-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-ring-track,
+.progress-ring-value {
+  fill: none;
+  stroke-width: 2;
+}
+
+.progress-ring-track {
+  stroke: color-mix(in srgb, var(--color-text-muted, #666) 35%, transparent);
+}
+
+.progress-ring-value {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: 43.9823;
+  transition: stroke-dashoffset 0.25s ease;
 }
 
 .children {
