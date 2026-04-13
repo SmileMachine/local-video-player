@@ -6,7 +6,7 @@
       <span class="icon" @click.stop="isDirectory ? randomSelect() : handleSelect()">{{ isDirectory ? (isExpanded ? '📂' :
         '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
-      <span class="duration">{{ formatDuration(item.info.duration) }}</span>
+      <span class="duration">{{ formatDuration(item?.info?.duration) }}</span>
       <span v-if="!isDirectory" class="progress-ring" :title="`观看进度 ${watchProgress}%`">
         <svg viewBox="0 0 20 20" aria-hidden="true">
           <circle class="progress-ring-track" cx="10" cy="10" r="7" />

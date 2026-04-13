@@ -4,48 +4,54 @@
     <div class="tooltip-content">
       <template v-if="isDirectory">
         <div><span class="label">文件数</span>{{ item.videoCount }}</div>
-        <div><span class="label">总时长</span>{{ formatDuration(item.info.duration) }}</div>
+        <div><span class="label">总时长</span>{{ formatDuration(item?.info?.duration) }}</div>
         <div><span class="label">总大小</span>{{ formatSize(item.size) }}</div>
         <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
       </template>
       <template v-else>
-        <div class="two-column-layout">
+        <div v-if="hasMediaInfo" class="two-column-layout">
           <div class="info-column">
             <div class="codec-section">
               <span class="label">视频</span>
-              <span class="codec-badge" :class="getVideoCodecClass(item.info.video.codec)">
-                {{ item.info.video.codec }}
+              <span class="codec-badge" :class="getVideoCodecClass(item?.info?.video?.codec)">
+                {{ item?.info?.video?.codec || '未知' }}
               </span>
-              <i v-if="!isVideoCodecSupported(item.info.video.codec)"
+              <i v-if="item?.info?.video?.codec && !isVideoCodecSupported(item.info.video.codec)"
                 class="fa-solid fa-circle-exclamation codec-warning"
                 :title="getVideoCodecWarning(item.info.video.codec)"></i>
             </div>
-            <div><span class="label">时长</span>{{ formatDuration(item.info.duration) }}</div>
+            <div><span class="label">时长</span>{{ formatDuration(item?.info?.duration) }}</div>
             <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
             <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
           </div>
 
           <div class="info-column">
-            <div class="codec-section" v-if="item.info.audio">
+            <div class="codec-section" v-if="item?.info?.audio">
               <span class="label">音频</span>
               <span class="codec-badge" :class="getAudioCodecClass(item.info.audio.codec)">
-                {{ item.info.audio.codec }}
+                {{ item.info.audio.codec || '未知' }}
               </span>
-              <i v-if="!isAudioCodecSupported(item.info.audio.codec)"
+              <i v-if="item.info.audio.codec && !isAudioCodecSupported(item.info.audio.codec)"
                 class="fa-solid fa-circle-exclamation codec-warning"
                 :title="getAudioCodecWarning(item.info.audio.codec)"></i>
             </div>
-            <div v-if="item.info.video?.width">
+            <div v-if="item?.info?.video?.width">
               <span class="label">分辨率</span>{{ item.info.video.width }}×{{ item.info.video.height }}
             </div>
-            <div v-if="item.info.video?.fps">
+            <div v-if="item?.info?.video?.fps">
               <span class="label">帧率</span>{{ formatFps(item.info.video.fps) }}
             </div>
 
-            <div v-if="item.info.audio?.channels">
+            <div v-if="item?.info?.audio?.channels">
               <span class="label">声道</span>{{ item.info.audio.channels }} 声道
             </div>
           </div>
+        </div>
+        <div v-else class="metadata-unavailable">
+          <div><span class="label">时长</span>{{ formatDuration(item?.info?.duration) }}</div>
+          <div><span class="label">大小</span>{{ formatSize(item.size) }}</div>
+          <div><span class="label">修改时间</span>{{ formatDate(item.mtime) }}</div>
+          <div><span class="label">媒体信息</span>无法读取</div>
         </div>
       </template>
     </div>
@@ -70,6 +76,7 @@ export default {
   },
   setup(props) {
     const isDirectory = computed(() => props.item.type === 'directory')
+    const hasMediaInfo = computed(() => Boolean(props.item?.info))
 
     const formatDuration = (seconds) => {
       if (!seconds) return '0:00'
@@ -152,6 +159,7 @@ export default {
 
     return {
       isDirectory,
+      hasMediaInfo,
       formatDuration,
       formatSize,
       formatDate,
@@ -219,6 +227,12 @@ export default {
 
 .tooltip-content>div {
   margin: 2px 0;
+}
+
+.metadata-unavailable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .two-column-layout {

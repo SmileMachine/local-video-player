@@ -5,6 +5,30 @@ import util from "util";
 import fs from "fs";
 
 class Logger {
+  static highlightUrls(message) {
+    return message.replace(
+      /\bhttps?:\/\/[^\s]+/g,
+      (url) => chalk.cyanBright.underline(url)
+    );
+  }
+
+  static formatMessage(message) {
+    if (typeof message === "string") {
+      return this.highlightUrls(message);
+    }
+
+    if (message instanceof Error) {
+      return message.stack || message.message;
+    }
+
+    return util.inspect(message, {
+      depth: null, // Unfold all levels
+      colors: true, // Enable colors
+      maxArrayLength: null, // Show all elements of the array
+      compact: false, // Pretty multi-line output
+    });
+  }
+
   static _log(message, options = {}) {
     if (options.file) {
       // dump json to `logs/$file` dir
@@ -17,12 +41,7 @@ class Logger {
       fs.writeFileSync(filePath, fmessage);
       return;
     }
-    const formattedMessage = util.inspect(message, {
-      depth: null, // Unfold all levels
-      colors: true, // Enable colors
-      maxArrayLength: null, // Show all elements of the array
-      compact: false, // Pretty multi-line output
-    });
+    const formattedMessage = this.formatMessage(message);
     const stack = new Error().stack;
     // Error
     //   at Logger._log (/video-player/server/utils/logger.js:26:19)

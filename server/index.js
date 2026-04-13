@@ -16,9 +16,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = config.port;
+const requestedPort = Number.parseInt(`${config.port}`, 10) || 3000;
 const host = config.host;
 const isDev = config.nodeEnv === "development";
+
+function createAppUrl(port) {
+  return `http://${host}:${port}`;
+}
+
+function listenOnAvailablePort(app, startPort) {
+  return new Promise((resolve, reject) => {
+    const tryListen = (port) => {
+      const server = app.listen(port);
+
+      server.once("listening", () => {
+        resolve({ server, port });
+      });
+
+      server.once("error", (error) => {
+        if (error.code === "EADDRINUSE") {
+          logger.warn(`Port ${port} is already in use, trying ${port + 1}`);
+          tryListen(port + 1);
+          return;
+        }
+
+        reject(error);
+      });
+    };
+
+    tryListen(startPort);
+  });
+}
 
 async function createServer() {
   // Enable cors
@@ -44,10 +72,15 @@ async function createServer() {
     }
   });
 
-  // Start the server
-  app.listen(port, () => {
-    logger.info(`Server running at http://${host}:${port}`);
-  });
+  try {
+    const { port } = await listenOnAvailablePort(app, requestedPort);
+    const appUrl = createAppUrl(port);
+
+    logger.success(`App is running at ${appUrl}`);
+  } catch (error) {
+    logger.error(error);
+    process.exit(1);
+  }
 }
 
 createServer();
