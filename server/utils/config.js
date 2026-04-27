@@ -4,6 +4,14 @@ import { EventEmitter } from "events";
 import { VideoScanner } from "./videoScanner.js";
 import { logger } from "./logger.js";
 
+const DEFAULT_CONFIG = {
+  cacheName: "video-info",
+  usePathIds: true,
+  getVideoInfo: true,
+  videoPaths: [
+  ],
+};
+
 class ConfigManager extends EventEmitter {
   static #instance;
   #initialized = false;
@@ -31,20 +39,37 @@ class ConfigManager extends EventEmitter {
 
   async load() {
     try {
+      if (!fs.existsSync(this.configPath)) {
+        this.config = { ...DEFAULT_CONFIG };
+        fs.writeFileSync(
+          this.configPath,
+          `${JSON.stringify(this.config, null, 2)}\n`,
+          "utf8"
+        );
+        logger.warn(`Config file not found. Created default config at ${this.configPath}`);
+        this.emit("updated", this.config);
+        return;
+      }
+
       const configData = fs.readFileSync(this.configPath, "utf8");
       this.config = JSON.parse(configData);
       this.emit("updated", this.config);
     } catch (error) {
-      console.error("Error loading video config:", error);
+      logger.error("Error loading video config:", error);
+      this.config = { ...DEFAULT_CONFIG };
     }
   }
 
   watchConfig() {
-    fs.watch(this.configPath, (eventType) => {
-      if (eventType === "change") {
-        this.load();
-      }
-    });
+    try {
+      fs.watch(this.configPath, (eventType) => {
+        if (eventType === "change") {
+          this.load();
+        }
+      });
+    } catch (error) {
+      logger.warn(`Config file watch disabled: ${error.message}`);
+    }
 
     const watchedDirs = new Set();
     const watchDir = (dirPath) => {
@@ -63,9 +88,7 @@ class ConfigManager extends EventEmitter {
     };
 
     this.on("updated", () => {
-      const { videoPaths = [] } = JSON.parse(
-        fs.readFileSync(this.configPath, "utf8")
-      );
+      const { videoPaths = [] } = this.config;
       videoPaths.forEach((videoPath) => {
         const expandedPath = videoPath.path.replace(
           /^~/,
