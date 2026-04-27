@@ -1,5 +1,8 @@
 <template>
-  <div class="tooltip show" :style="style">
+  <div class="tooltip show" :class="`tooltip-${variant}`" :style="style">
+    <button v-if="variant === 'sheet'" class="tooltip-close" @click="$emit('close')" title="关闭">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
     <div class="tooltip-title">{{ item.name }}</div>
     <div class="tooltip-content">
       <template v-if="isDirectory">
@@ -72,8 +75,14 @@ export default {
     style: {
       type: Object,
       required: true
+    },
+    variant: {
+      type: String,
+      default: 'tooltip',
+      validator: (value) => ['tooltip', 'sheet'].includes(value)
     }
   },
+  emits: ['close'],
   setup(props) {
     const isDirectory = computed(() => props.item.type === 'directory')
     const hasMediaInfo = computed(() => Boolean(props.item?.info))
@@ -192,6 +201,25 @@ export default {
   transition: all 0.2s ease-in-out;
 }
 
+.tooltip-sheet {
+  z-index: 2100;
+  pointer-events: auto;
+  background-color: color-mix(in srgb, var(--color-background, #242424) 94%, black);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.42);
+  max-width: none;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  transform: translateY(0);
+}
+
+.tooltip-sheet::-webkit-scrollbar {
+  display: none;
+}
+
 .tooltip.show {
   opacity: 1;
   transform: translateX(0);
@@ -209,6 +237,31 @@ export default {
   border-right: 6px solid rgba(0, 0, 0, 0.8);
 }
 
+.tooltip-sheet::before {
+  display: none;
+}
+
+.tooltip-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
 .tooltip-title {
   font-weight: bold;
   margin-bottom: 5px;
@@ -217,6 +270,7 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 32px;
 }
 
 .tooltip-content {
@@ -289,5 +343,12 @@ export default {
   color: #ffb74d;
   font-size: 12px;
   cursor: help;
+}
+
+@media (max-width: 560px) {
+  .tooltip-sheet .two-column-layout {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 </style>

@@ -63,6 +63,24 @@
             </div>
 
             <div class="setting-section">
+              <h3>界面布局</h3>
+              <div class="input-group layout-preference-row">
+                <label for="layout-preference">布局模式:</label>
+                <select
+                  id="layout-preference"
+                  class="input-select"
+                  :value="layoutPreference"
+                  @change="setLayoutPreference($event.target.value)"
+                >
+                  <option value="auto">自动</option>
+                  <option value="desktop">桌面布局</option>
+                  <option value="mobile">移动布局</option>
+                </select>
+              </div>
+              <p class="setting-note">自动模式下，较窄视口使用移动布局；也可以手动指定当前设备的显示方式。</p>
+            </div>
+
+            <div class="setting-section">
               <h3>视频列表</h3>
               <div class="action-row">
                 <div>
@@ -90,6 +108,7 @@
 
 <script>
 import { ref, reactive, watch } from 'vue'
+import { useLayoutPreference } from '../composables/useLayoutPreference'
 
 export default {
   name: 'SettingsModal',
@@ -106,6 +125,7 @@ export default {
     const reloading = ref(false)
     const error = ref('')
     const reloadMessage = ref('')
+    const { layoutPreference, setLayoutPreference } = useLayoutPreference()
     const localConfig = reactive({
       cacheName: 'video-info',
       usePathIds: true,
@@ -233,6 +253,8 @@ export default {
       reloading,
       error,
       reloadMessage,
+      layoutPreference,
+      setLayoutPreference,
       localConfig,
       addPath,
       removePath,
@@ -369,7 +391,8 @@ export default {
 
 .input-name,
 .input-path,
-.input-text {
+.input-text,
+.input-select {
   background-color: var(--color-surface, #1e1e1e);
   border: 1px solid var(--color-border, #3d3d3d);
   border-radius: 6px;
@@ -381,7 +404,8 @@ export default {
 
 .input-name:focus,
 .input-path:focus,
-.input-text:focus {
+.input-text:focus,
+.input-select:focus {
   outline: none;
   border-color: var(--color-primary, #2196f3);
 }
@@ -397,6 +421,19 @@ export default {
 
 .input-text {
   width: 200px;
+}
+
+.input-select {
+  min-width: 160px;
+  height: 38px;
+}
+
+.setting-note {
+  color: var(--color-text-muted, #b0b0b0);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 8px 0 0;
+  text-align: left;
 }
 
 .btn-remove {
@@ -552,6 +589,29 @@ export default {
 }
 
 @media (max-width: 560px) {
+  .modal-overlay {
+    align-items: stretch;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .path-item,
+  .input-group {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .input-name,
+  .input-path,
+  .input-text,
+  .input-select {
+    width: 100%;
+  }
+
   .action-row {
     align-items: stretch;
     flex-direction: column;

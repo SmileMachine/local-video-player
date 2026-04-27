@@ -48,12 +48,18 @@ a:hover {
   color: var(--color-primary-hover);
 }
 
-body {
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  min-height: 100dvh;
 }
 
 h1 {
@@ -87,10 +93,7 @@ button:focus-visible {
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  text-align: initial;
 }
 
 @media (prefers-color-scheme: light) {

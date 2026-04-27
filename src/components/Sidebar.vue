@@ -1,12 +1,15 @@
 <template>
-  <div class="playlist" :style="{ width: isCollapsed ? '0px' : sidebarWidth + 'px' }">
+  <button v-if="showMobileOpenButton" class="mobile-open-button" @click="handleToggleClick" title="打开列表">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+  <div class="playlist" :class="playlistClasses" :style="playlistStyle">
     <!-- Toggle Button -->
-    <button class="toggle-button" :class="{ 'outside': isCollapsed }" @click="handleToggleClick">
+    <button v-if="showPanelToggleButton" class="toggle-button" :class="{ 'outside': isCollapsed }" @click="handleToggleClick">
       <i v-if="isCollapsed" class="fas fa-chevron-right"></i>
       <i v-else class="fas fa-chevron-left"></i>
     </button>
     <!-- Playlist Content -->
-    <div v-if="!isCollapsed" class="playlist-content">
+    <div v-if="isContentVisible" class="playlist-content">
       <!-- Appbar - 固定顶部 -->
       <div class="appbar">
         <button class="settings-button" @click="$emit('open-settings')" title="设置">
@@ -33,22 +36,34 @@
         <!-- Directory Tree - 内容 -->
         <div class="directory-tree">
           <DirectoryItem v-for="item in videos" :key="item.id || item.name" :path="[item.name]" :item="item" :currentId="currentId"
-            :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+            :currentPath="currentPath" :is-mobile-layout="isMobileLayout"
+            @select-video="handleSelectVideo" @show-detail="showMobileDetail" />
         </div>
       </div>
     </div>
   </div>
+  <Teleport to="body">
+    <ItemTooltip
+      v-if="mobileDetailItem && isMobileLayout"
+      :item="mobileDetailItem"
+      :style="mobileDetailStyle"
+      variant="sheet"
+      @close="closeMobileDetail"
+    />
+  </Teleport>
+  <div v-if="showMobileScrim" class="mobile-sidebar-scrim" @click="handleToggleClick"></div>
   <!-- Resizer -->
-  <div v-if="!isCollapsed" class="resizer" @mousedown="startResize" @dblclick="resetWidth"></div>
+  <div v-if="showResizer" class="resizer" @mousedown="startResize" @dblclick="resetWidth"></div>
 </template>
 
 <script>
 import DirectoryItem from './DirectoryItem.vue'
+import ItemTooltip from './ItemTooltip.vue'
 import ThemePicker from './ThemePicker.vue'
 import { useSidebar } from '../composables/useSidebar'
-import { onMounted } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 export default {
-  components: { DirectoryItem, ThemePicker },
+  components: { DirectoryItem, ItemTooltip, ThemePicker },
   props: {
     videos: Array,
     currentId: String,
@@ -60,10 +75,26 @@ export default {
     sortOrder: {
       type: String,
       default: 'asc'
+    },
+    isMobileLayout: {
+      type: Boolean,
+      default: false
+    },
+    isMobilePortrait: {
+      type: Boolean,
+      default: false
+    },
+    isMobileLandscape: {
+      type: Boolean,
+      default: false
+    },
+    isMobileFullscreenSidebar: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['select-video', 'toggle', 'resize-start', 'reset-width', 'open-settings', 'open-shortcuts', 'change-sort-by', 'toggle-sort-order'],
-  setup() {
+  setup(props, { emit }) {
     const {
       sidebarWidth,
       isCollapsed,
@@ -71,21 +102,133 @@ export default {
       resetWidth,
       handleToggleClick
     } = useSidebar()
+    const mobileDetailItem = ref(null)
+    const mobileDetailStyle = ref({})
+
+    const mobileSidebarWidth = computed(() => {
+      if (props.isMobileFullscreenSidebar) {
+        return '100dvw'
+      }
+
+      if (props.isMobileLayout) {
+        return 'min(360px, 82vw)'
+      }
+
+      return ''
+    })
+
+    const playlistWidth = computed(() => {
+      if (props.isMobileLayout) {
+        return mobileSidebarWidth.value
+      }
+
+      if (isCollapsed.value) {
+        return '0px'
+      }
+
+      return `${sidebarWidth.value}px`
+    })
+
+    const playlistStyle = computed(() => ({
+      width: playlistWidth.value,
+      '--mobile-sidebar-width': mobileSidebarWidth.value || playlistWidth.value,
+      '--mobile-sidebar-safe-left': props.isMobileLayout ? 'env(safe-area-inset-left)' : '0px'
+    }))
+
+    const playlistClasses = computed(() => ({
+      'is-collapsed': isCollapsed.value,
+      'is-mobile': props.isMobileLayout,
+      'is-mobile-portrait': props.isMobilePortrait,
+      'is-mobile-landscape': props.isMobileLandscape,
+      'is-mobile-fullscreen': props.isMobileFullscreenSidebar
+    }))
+
+    const isContentVisible = computed(() => !isCollapsed.value)
+    const showResizer = computed(() => !props.isMobileLayout && !isCollapsed.value)
+    const showMobileScrim = computed(() => props.isMobileLayout && !props.isMobileFullscreenSidebar && !isCollapsed.value)
+    const showMobileOpenButton = computed(() => props.isMobileLayout && isCollapsed.value)
+    const showPanelToggleButton = computed(() => !props.isMobileLayout || !isCollapsed.value)
+
+    const handleSelectVideo = (video) => {
+      closeMobileDetail()
+      emit('select-video', video)
+
+      if (props.isMobileLayout) {
+        isCollapsed.value = true
+      }
+    }
+
+    const updateMobileDetailStyle = () => {
+      const sidebar = document.querySelector('.playlist.is-mobile')
+      const rect = sidebar?.getBoundingClientRect()
+      if (!rect) {
+        mobileDetailStyle.value = {}
+        return
+      }
+
+      const left = rect.left + 12
+      const width = Math.max(260, rect.width - 24)
+      const maxHeight = Math.max(220, rect.height * 0.58)
+
+      mobileDetailStyle.value = {
+        left: `${left}px`,
+        bottom: `${Math.max(12, window.innerHeight - rect.bottom + 12)}px`,
+        width: `${width}px`,
+        maxHeight: `${maxHeight}px`
+      }
+    }
+
+    const showMobileDetail = async ({ item }) => {
+      if (!props.isMobileLayout) {
+        return
+      }
+
+      mobileDetailItem.value = item
+      await nextTick()
+      updateMobileDetailStyle()
+    }
+
+    const closeMobileDetail = () => {
+      mobileDetailItem.value = null
+    }
+
+    const handleShortcut = (event) => {
+      if (event.key === 'Enter' && event.shiftKey) {
+        handleToggleClick(event)
+      }
+    }
 
     onMounted(() => {
-      window.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && event.shiftKey) {
-          handleToggleClick(event)
-        }
-      })
+      window.addEventListener('keydown', handleShortcut)
+      window.addEventListener('resize', updateMobileDetailStyle)
+      window.addEventListener('orientationchange', updateMobileDetailStyle)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleShortcut)
+      window.removeEventListener('resize', updateMobileDetailStyle)
+      window.removeEventListener('orientationchange', updateMobileDetailStyle)
     })
 
     return {
       sidebarWidth,
       isCollapsed,
+      playlistWidth,
+      playlistStyle,
+      playlistClasses,
+      isContentVisible,
+      showResizer,
+      showMobileScrim,
+      showMobileOpenButton,
+      showPanelToggleButton,
+      mobileDetailItem,
+      mobileDetailStyle,
       startResize,
       resetWidth,
       handleToggleClick,
+      handleSelectVideo,
+      showMobileDetail,
+      closeMobileDetail,
     }
   }
 }
@@ -287,6 +430,92 @@ body.resizing::after {
   transition: width 0.3s ease-out;
   overflow: visible;
   color: var(--color-text, #e0e0e0);
+}
+
+.playlist.is-mobile {
+  position: fixed;
+  top: 0;
+  left: calc(-1 * var(--mobile-sidebar-safe-left));
+  bottom: 0;
+  z-index: 40;
+  width: calc(var(--mobile-sidebar-width) + var(--mobile-sidebar-safe-left));
+  height: 100dvh;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 0 var(--mobile-sidebar-safe-left);
+  border-radius: 0;
+  box-shadow: 18px 0 48px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+  transform: translateX(0);
+}
+
+.playlist.is-mobile.is-collapsed {
+  box-shadow: none;
+  pointer-events: none;
+  transform: translateX(calc(-1 * (var(--mobile-sidebar-width) + var(--mobile-sidebar-safe-left))));
+}
+
+.playlist.is-mobile .toggle-button,
+.playlist.is-mobile .playlist-content {
+  pointer-events: auto;
+}
+
+.playlist.is-mobile .toggle-button {
+  top: calc(12px + env(safe-area-inset-top));
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+.playlist.is-mobile .toggle-button.outside {
+  display: none;
+}
+
+.playlist.is-mobile-portrait {
+  border-right: none;
+}
+
+.playlist.is-mobile-landscape {
+  background: color-mix(in srgb, var(--color-background, #242424) 92%, transparent);
+  border-right: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+
+.playlist.is-mobile .appbar {
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+
+.playlist.is-mobile .directory-tree {
+  padding: 14px;
+  padding-top: calc(72px + env(safe-area-inset-top));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.mobile-sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.mobile-open-button {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  z-index: 45;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-background, #242424) 78%, transparent);
+  color: var(--color-text, #fff);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Playlist content */

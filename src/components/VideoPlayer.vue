@@ -170,10 +170,16 @@ export default {
 .video-player {
   flex: 1;
   min-width: 0;
-  height: 100vh;
+  width: 100%;
+  height: 100dvh;
   background-color: #000;
   margin: 0;
   display: flex;
+}
+
+.layout-mobile .video-player {
+  width: 100vw;
+  height: 100dvh;
 }
 
 .video-player .dplayer,

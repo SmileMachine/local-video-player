@@ -2,7 +2,8 @@
   <div class="directory-item" :class="{ 'is-directory': isDirectory }">
     <div class="item-header" ref="itemRef" :class="{ 'active': !isDirectory && item.id === currentId }"
       @mouseenter.stop="showTooltip" @mouseleave.stop="hideTooltip"
-      @click="isDirectory ? toggleExpand() : handleSelect()">
+      @pointerdown="startDetailPress" @pointerup="cancelDetailPress" @pointercancel="cancelDetailPress" @pointerleave="cancelDetailPress"
+      @click="handleHeaderClick">
       <span class="icon" @click.stop="isDirectory ? randomSelect() : handleSelect()">{{ isDirectory ? (isExpanded ? '📂' :
         '📁') : '🎬' }}</span>
       <span class="name">{{ item.name }}</span>
@@ -18,11 +19,14 @@
     <Transition name="expand">
       <div v-if="isDirectory && isExpanded" class="children">
         <DirectoryItem v-for="child in item.children" :key="child.id || child.name" :path="path.concat(child.name)" :item="child"
-          :currentId="currentId" :currentPath="currentPath" @select-video="$emit('select-video', $event)" />
+          :currentId="currentId" :currentPath="currentPath" :is-mobile-layout="isMobileLayout"
+          @select-video="$emit('select-video', $event)" @show-detail="$emit('show-detail', $event)" />
       </div>
     </Transition>
 
-    <ItemTooltip v-if="showingTooltip" :item="item" :style="tooltipStyle" />
+    <Teleport to="body">
+      <ItemTooltip v-if="showingTooltip" :item="item" :style="tooltipStyle" />
+    </Teleport>
   </div>
 </template>
 
@@ -54,15 +58,21 @@ export default {
     currentPath: {
       type: Array,
       required: true
+    },
+    isMobileLayout: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['select-video'],
+  emits: ['select-video', 'show-detail'],
   setup(props, { emit }) {
     const isExpanded = ref(false)
     const showingTooltip = ref(false)
     const tooltipStyle = ref({})
     const itemRef = ref(null)
     const watchedSeconds = ref(0)
+    const longPressTimer = ref(null)
+    const suppressNextClick = ref(false)
 
     const isDirectory = computed(() => props.item.type === 'directory')
     const historyKey = computed(() => Array.isArray(props.path) ? props.path.join(',') : String(props.path || ''))
@@ -104,10 +114,19 @@ export default {
     }
 
     const showTooltip = (event) => {
+      if (props.isMobileLayout) {
+        return
+      }
+
       const rect = event.currentTarget.getBoundingClientRect()
+      const tooltipWidth = props.item?.info ? 390 : 220
+      const spaceRight = window.innerWidth - rect.right
+      const left = spaceRight >= tooltipWidth + 16
+        ? rect.right + 10
+        : Math.max(10, rect.left - tooltipWidth - 10)
       tooltipStyle.value = {
-        left: `${rect.right + 10}px`,
-        top: `${rect.top}px`
+        left: `${left}px`,
+        top: `${Math.max(10, Math.min(rect.top, window.innerHeight - 180))}px`
       }
       showingTooltip.value = true
     }
@@ -123,6 +142,40 @@ export default {
 
     const handleSelect = () => {
       emit('select-video', { id: props.item.id, path: props.path })
+    }
+
+    const handleHeaderClick = (event) => {
+      if (suppressNextClick.value) {
+        event.preventDefault()
+        suppressNextClick.value = false
+        return
+      }
+
+      if (isDirectory.value) {
+        toggleExpand()
+      } else {
+        handleSelect()
+      }
+    }
+
+    const startDetailPress = (event) => {
+      if (!props.isMobileLayout || event.pointerType === 'mouse') {
+        return
+      }
+
+      cancelDetailPress()
+      longPressTimer.value = window.setTimeout(() => {
+        suppressNextClick.value = true
+        hideTooltip()
+        emit('show-detail', { item: props.item, path: props.path })
+      }, 420)
+    }
+
+    const cancelDetailPress = () => {
+      if (longPressTimer.value) {
+        window.clearTimeout(longPressTimer.value)
+        longPressTimer.value = null
+      }
     }
 
     // Used to randomly select a video in the directory
@@ -190,6 +243,7 @@ export default {
     })
 
     onUnmounted(() => {
+      cancelDetailPress()
       window.removeEventListener('video-progress-updated', handleProgressUpdated)
     })
 
@@ -202,6 +256,9 @@ export default {
       hideTooltip,
       toggleExpand,
       handleSelect,
+      handleHeaderClick,
+      startDetailPress,
+      cancelDetailPress,
       randomSelect,
       formatDuration,
       itemRef,
@@ -316,5 +373,24 @@ export default {
 /* Ensure the child container has a transition effect */
 .children {
   overflow: hidden;
+}
+
+:global(.playlist.is-mobile) .item-header {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+:global(.playlist.is-mobile) .icon {
+  margin-right: 10px;
+}
+
+:global(.playlist.is-mobile) .children {
+  margin-left: 12px;
+}
+
+:global(.playlist.is-mobile) .progress-ring {
+  width: 18px;
+  height: 18px;
 }
 </style>

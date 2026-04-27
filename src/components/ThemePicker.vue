@@ -1,72 +1,86 @@
 <template>
   <div class="theme-picker-wrapper">
     <!-- 调色盘按钮 -->
-    <button class="theme-button" @click="togglePanel" title="主题风格">
+    <button ref="buttonRef" class="theme-button" @click="togglePanel" title="主题风格">
       <i class="fas fa-palette"></i>
     </button>
 
     <!-- 主题选择面板 -->
-    <Transition name="theme-panel">
-      <div v-if="showPanel" class="theme-panel" @click.stop>
-        <div class="panel-header">
-          <span class="panel-title">🎨 主题风格</span>
-          <button class="panel-close" @click="showPanel = false">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <!-- 主题网格 -->
-        <div class="theme-grid">
-          <button
-            v-for="(theme, id) in themes"
-            :key="id"
-            class="theme-card"
-            :class="{ active: currentThemeId === id }"
-            @click="selectTheme(id)"
-          >
-            <div class="theme-preview" :style="getPreviewStyle(theme)">
-              <span class="theme-emoji">{{ theme.emoji }}</span>
-            </div>
-            <span class="theme-name">{{ theme.name }}</span>
-            <div v-if="currentThemeId === id" class="active-indicator">
-              <i class="fas fa-check"></i>
-            </div>
-          </button>
-        </div>
-
-        <!-- Emoji 字体选择 -->
-        <div class="emoji-section">
-          <span class="section-title">✨ Emoji 字体</span>
-          <div class="emoji-options">
-            <button
-              v-for="font in emojiFonts"
-              :key="font.id"
-              class="emoji-option"
-              :class="{ active: currentEmojiFont === font.value }"
-              @click="selectEmojiFont(font.value)"
-            >
-              <span class="emoji-preview" :style="{ fontFamily: font.value }">😊</span>
-              <span class="emoji-name">{{ font.name }}</span>
-              <span class="emoji-note">{{ font.note }}</span>
+    <Teleport to="body">
+      <Transition name="theme-panel">
+        <div
+          v-if="showPanel"
+          class="theme-panel"
+          :class="{ 'theme-panel-mobile': isMobilePanel }"
+          :style="themePanelStyle"
+          @click.stop
+        >
+          <div class="panel-header">
+            <span class="panel-title">🎨 主题风格</span>
+            <button class="panel-close" @click="showPanel = false">
+              <i class="fas fa-times"></i>
             </button>
           </div>
-        </div>
-      </div>
-    </Transition>
 
-    <!-- 点击外部关闭 -->
-    <div v-if="showPanel" class="backdrop" @click="showPanel = false"></div>
+          <!-- 主题网格 -->
+          <div class="theme-grid">
+            <button
+              v-for="(theme, id) in themes"
+              :key="id"
+              class="theme-card"
+              :class="{ active: currentThemeId === id }"
+              @click="selectTheme(id)"
+            >
+              <div class="theme-preview" :style="getPreviewStyle(theme)">
+                <span class="theme-emoji">{{ theme.emoji }}</span>
+              </div>
+              <span class="theme-name">{{ theme.name }}</span>
+              <div v-if="currentThemeId === id" class="active-indicator">
+                <i class="fas fa-check"></i>
+              </div>
+            </button>
+          </div>
+
+          <!-- Emoji 字体选择 -->
+          <div class="emoji-section">
+            <span class="section-title">✨ Emoji 字体</span>
+            <div class="emoji-options">
+              <button
+                v-for="font in emojiFonts"
+                :key="font.id"
+                class="emoji-option"
+                :class="{ active: currentEmojiFont === font.value }"
+                @click="selectEmojiFont(font.value)"
+              >
+                <span class="emoji-preview" :style="{ fontFamily: font.value }">😊</span>
+                <span class="emoji-name">{{ font.name }}</span>
+                <span class="emoji-note">{{ font.note }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- 点击外部关闭 -->
+      <div v-if="showPanel" class="backdrop" @click="showPanel = false"></div>
+    </Teleport>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useTheme } from '../composables/useTheme'
+
+const PANEL_WIDTH = 320
+const PANEL_GAP = 12
 
 export default {
   name: 'ThemePicker',
   setup() {
     const showPanel = ref(false)
+    const buttonRef = ref(null)
+    const isMobilePanel = ref(false)
+    const themePanelStyle = ref({})
     const {
       themes,
       emojiFonts,
@@ -76,8 +90,65 @@ export default {
       setEmojiFont
     } = useTheme()
 
-    const togglePanel = () => {
+    const updatePanelPosition = () => {
+      const button = buttonRef.value
+      if (!button) return
+
+      isMobilePanel.value = Boolean(document.querySelector('.app-container.layout-mobile'))
+
+      if (isMobilePanel.value) {
+        const sidebar = button.closest('.playlist')
+        const sidebarRect = sidebar?.getBoundingClientRect()
+        const buttonRect = button.getBoundingClientRect()
+        const bounds = sidebarRect || {
+          left: 0,
+          right: window.innerWidth,
+          top: 0,
+          bottom: window.innerHeight
+        }
+        const left = Math.max(PANEL_GAP, bounds.left + PANEL_GAP)
+        const right = Math.min(window.innerWidth - PANEL_GAP, bounds.right - PANEL_GAP)
+        let top = buttonRect.bottom + PANEL_GAP
+        let maxHeight = bounds.bottom - top - PANEL_GAP
+
+        if (maxHeight < 260) {
+          top = bounds.top + PANEL_GAP
+          maxHeight = bounds.bottom - top - PANEL_GAP
+        }
+
+        themePanelStyle.value = {
+          left: `${left}px`,
+          top: `${top}px`,
+          width: `${Math.max(260, right - left)}px`,
+          maxHeight: `${Math.max(220, maxHeight)}px`
+        }
+        return
+      }
+
+      const rect = button.getBoundingClientRect()
+      const availableRight = window.innerWidth - PANEL_WIDTH - PANEL_GAP
+      const left = Math.min(Math.max(rect.left, PANEL_GAP), Math.max(PANEL_GAP, availableRight))
+      let top = rect.bottom + PANEL_GAP
+      let maxHeight = window.innerHeight - top - PANEL_GAP
+
+      if (maxHeight < 260) {
+        top = PANEL_GAP
+        maxHeight = window.innerHeight - PANEL_GAP * 2
+      }
+
+      themePanelStyle.value = {
+        left: `${left}px`,
+        top: `${top}px`,
+        maxHeight: `${Math.max(220, maxHeight)}px`
+      }
+    }
+
+    const togglePanel = async () => {
       showPanel.value = !showPanel.value
+      if (showPanel.value) {
+        await nextTick()
+        updatePanelPosition()
+      }
     }
 
     const selectTheme = (id) => {
@@ -93,8 +164,21 @@ export default {
       borderColor: theme.colors.primary
     })
 
+    onMounted(() => {
+      window.addEventListener('resize', updatePanelPosition)
+      window.addEventListener('orientationchange', updatePanelPosition)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', updatePanelPosition)
+      window.removeEventListener('orientationchange', updatePanelPosition)
+    })
+
     return {
       showPanel,
+      buttonRef,
+      isMobilePanel,
+      themePanelStyle,
       themes,
       emojiFonts,
       currentThemeId,
@@ -148,16 +232,29 @@ export default {
 
 /* 面板样式 */
 .theme-panel {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 0;
+  position: fixed;
   width: 320px;
   background: var(--color-background, #242424);
   border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  overflow: hidden;
+  z-index: 2000;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.theme-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.theme-panel-mobile {
+  max-width: calc(100vw - 24px);
+}
+
+.theme-panel-mobile .theme-grid {
+  grid-template-columns: repeat(auto-fit, minmax(66px, 1fr));
 }
 
 .panel-header {
@@ -357,7 +454,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  z-index: 1999;
 }
 
 /* 动画 */
@@ -370,5 +467,11 @@ export default {
 .theme-panel-leave-to {
   opacity: 0;
   transform: translateY(-10px) scale(0.95);
+}
+
+@media (max-width: 560px) {
+  .theme-grid {
+    grid-template-columns: repeat(auto-fit, minmax(66px, 1fr));
+  }
 }
 </style>
