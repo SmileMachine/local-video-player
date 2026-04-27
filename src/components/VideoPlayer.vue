@@ -1,15 +1,11 @@
 <template>
   <div class="video-player">
-    <video v-if="playerType === 'Plyr'" id="video-player" ref="playerRef" playsinline>
-      <source type="video/mp4" />
-    </video>
-    <div v-else id="video-player" ref="playerRef">
-    </div>
+    <div ref="playerMountRef" class="player-mount"></div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, watch, toRaw } from 'vue'
+import { nextTick, ref, onMounted, onUnmounted, watch, toRaw } from 'vue'
 import { createPlayer } from '../players/playerFactory'
 import { useVideoLibrary } from '../composables/useVideoLibrary'
 
@@ -24,8 +20,9 @@ export default {
   },
   setup(props) {
     let player = null
-    const playerRef = ref(null)
-    const firstPlay = ref(true)
+    let playerToken = 0
+    const playerMountRef = ref(null)
+    const updateCount = ref(10)
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
@@ -81,59 +78,137 @@ export default {
       }
     }
 
-    onMounted(async () => {
-      const updateInterval = 10 // updates every 10 'TimeUpdate' events
-      let count = updateInterval // updates every 10 'TimeUpdate' events
-      player = await createPlayer(props.playerType, {
-        container: document.getElementById('video-player'),
+    const destroyPlayer = () => {
+      playerToken += 1
+      if (player) {
+        player.destroy()
+      }
+      player = null
+      window.__videoPlayer = null
+
+      if (playerMountRef.value) {
+        playerMountRef.value.replaceChildren()
+      }
+    }
+
+    const createPlayerElement = () => {
+      const mount = playerMountRef.value
+      if (!mount) {
+        return null
+      }
+
+      mount.replaceChildren()
+
+      if (props.playerType === 'Plyr') {
+        const video = document.createElement('video')
+        const source = document.createElement('source')
+        video.setAttribute('playsinline', '')
+        source.type = 'video/mp4'
+        video.appendChild(source)
+        mount.appendChild(video)
+        return video
+      }
+
+      const container = document.createElement('div')
+      mount.appendChild(container)
+      return container
+    }
+
+    const initPlayer = async () => {
+      destroyPlayer()
+      const token = playerToken
+      updateCount.value = 10
+      await nextTick()
+
+      const container = createPlayerElement()
+      if (!container || token !== playerToken) {
+        return
+      }
+
+      const nextPlayer = await createPlayer(props.playerType, {
+        container,
         // Save the playback position when the video is playing
         onTimeUpdate: () => {
+          if (token !== playerToken || player !== nextPlayer) {
+            return
+          }
+
           // console.log('onTimeUpdate')
           // If is playing
-          count -= 1
-          if (player.isPlaying() && currentVideoInfo.value.path && count <= 0) {
-            count = updateInterval
-            saveVideoTime(currentVideoInfo.value.path, player.getCurrentTime())
+          updateCount.value -= 1
+          if (nextPlayer.isPlaying() && currentVideoInfo.value.path && updateCount.value <= 0) {
+            updateCount.value = 10
+            saveVideoTime(currentVideoInfo.value.path, nextPlayer.getCurrentTime())
             console.log(currentVideoInfo.value.path)
           }
         },
         onEnded: () => {
+          if (token !== playerToken || player !== nextPlayer) {
+            return
+          }
+
           saveVideoTime(currentVideoInfo.value.path, 0)
         }
       })
 
+      if (token !== playerToken) {
+        nextPlayer.destroy()
+        return
+      }
+
+      player = nextPlayer
+
       // Expose player instance for keyboard shortcuts
       window.__videoPlayer = player
 
-      window.addEventListener('click', () => {
-        setTimeout(focusVideo, 0)
-      })
+      if (currentVideoInfo.value.videoUrl) {
+        player.once('canplay', () => handleReady(token, player))
+        player.setSource(currentVideoInfo.value)
+      }
+    }
+
+    const handleWindowClick = () => {
+      setTimeout(focusVideo, 0)
+    }
+
+    onMounted(async () => {
+      await initPlayer()
+      window.addEventListener('click', handleWindowClick)
     })
 
-    const handleReady = () => {
+    const handleReady = (token, readyPlayer) => {
+      if (token !== playerToken || player !== readyPlayer) {
+        return
+      }
+
       // Set the saved playback position
       const savedTime = loadVideoTime(currentVideoInfo.value.path)
       const timeElapsed = ref(0)
       const eps = 1e-3
       const MAX_ATTEMPTS = 500
       const checkInterval = setInterval(() => {
+        if (token !== playerToken || player !== readyPlayer) {
+          clearInterval(checkInterval)
+          return
+        }
+
         // So fucking weird. Have to set the currentTime
         // over and over again until it's equal to the savedTime
         if (timeElapsed.value > MAX_ATTEMPTS) {
           clearInterval(checkInterval)
           console.log('Max attempts reached. Giving up.')
-          console.log(`timeElapsed: ${timeElapsed.value} ms, player.currentTime: ${player.getCurrentTime()}`)
+          console.log(`timeElapsed: ${timeElapsed.value} ms, player.currentTime: ${readyPlayer.getCurrentTime()}`)
           // playVideo()
-          player.play()
-        } else if (Math.abs(savedTime - player.getCurrentTime()) > eps) {
-          player.setCurrentTime(savedTime)
+          readyPlayer.play()
+        } else if (Math.abs(savedTime - readyPlayer.getCurrentTime()) > eps) {
+          readyPlayer.setCurrentTime(savedTime)
         } else {
           // Finally, we're done
           clearInterval(checkInterval)
           console.log(`timeElapsed: ${timeElapsed.value} ms`)
           // console.log(`player.currentTime: ${player.getCurrentTime()}`)
           // playVideo()
-          player.play()
+          readyPlayer.play()
         }
         timeElapsed.value += 1
       }, 1)
@@ -143,20 +218,24 @@ export default {
     watch(() => currentVideoInfo.value, () => {
       console.log('currentVideoInfo:', toRaw(currentVideoInfo.value))
       if (player && currentVideoInfo.value.videoUrl) {
-        player.once('canplay', handleReady)
+        const token = playerToken
+        const currentPlayer = player
+        player.once('canplay', () => handleReady(token, currentPlayer))
         player.setSource(currentVideoInfo.value)
       }
     })
 
+    watch(() => props.playerType, async () => {
+      await initPlayer()
+    })
+
     onUnmounted(() => {
-      if (player) {
-        player.destroy()
-      }
-      window.__videoPlayer = null
+      window.removeEventListener('click', handleWindowClick)
+      destroyPlayer()
     })
 
     return {
-      playerRef,
+      playerMountRef,
       currentVideoInfo,
     }
   }
@@ -183,7 +262,14 @@ export default {
 }
 
 .video-player .dplayer,
-.video-player .plyr {
+.video-player .plyr,
+.player-mount {
+  width: 100%;
+  height: 100%;
+}
+
+.player-mount > video,
+.player-mount > div {
   width: 100%;
   height: 100%;
 }

@@ -20,6 +20,8 @@
     <ShortcutsGuideModal :show="showShortcutsModal" @close="showShortcutsModal = false" />
     <SettingsModal
       :show="showSettingsModal"
+      :player-type="playerType"
+      @change-player-type="setPlayerType"
       @close="showSettingsModal = false"
       @saved="handleConfigSaved"
       @reloaded="handleVideosReloaded"
@@ -36,6 +38,7 @@ import SettingsModal from './components/SettingsModal.vue'
 import { useVideoLibrary } from './composables/useVideoLibrary'
 import { useTheme } from './composables/useTheme'
 import { useLayoutPreference } from './composables/useLayoutPreference'
+import { usePlayerPreference } from './composables/usePlayerPreference'
 
 export default {
   name: 'App',
@@ -62,9 +65,10 @@ export default {
 
     const { initTheme } = useTheme()
     const { layoutPreference } = useLayoutPreference()
+    const defaultPlayerType = import.meta.env.VITE_PLAYER_TYPE || "DPlayer"
+    const { playerType, setPlayerType } = usePlayerPreference(defaultPlayerType)
 
     const showSettingsModal = ref(false)
-    const playerType = import.meta.env.VITE_PLAYER_TYPE || "Plyr"
     const isNarrowViewport = ref(false)
     const isCompactPortraitViewport = ref(false)
     const isPortraitViewport = ref(false)
@@ -124,6 +128,7 @@ export default {
     return {
       // video library
       playerType,
+      setPlayerType,
       videos,
       sortedVideos,
       currentVideoId,

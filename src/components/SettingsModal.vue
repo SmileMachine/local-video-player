@@ -3,16 +3,56 @@
     <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h2>服务端设置</h2>
+          <h2>设置</h2>
           <button class="close-button" @click="close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
           <div v-if="loading" class="loading">加载中...</div>
           <div v-else-if="error" class="error">{{ error }}</div>
           <div v-else class="settings-form">
+            <div class="settings-group">
+              <h3 class="group-title">客户端设置</h3>
+              <div class="setting-section">
+                <h4>界面布局</h4>
+                <div class="input-group layout-preference-row">
+                  <label for="layout-preference">布局模式:</label>
+                  <select
+                    id="layout-preference"
+                    class="input-select"
+                    :value="layoutPreference"
+                    @change="setLayoutPreference($event.target.value)"
+                  >
+                    <option value="auto">自动</option>
+                    <option value="desktop">桌面布局</option>
+                    <option value="mobile">移动布局</option>
+                  </select>
+                </div>
+                <p class="setting-note">自动模式下，较窄视口使用移动布局；也可以手动指定当前设备的显示方式。</p>
+              </div>
+
+              <div class="setting-section">
+                <h4>播放器</h4>
+                <div class="input-group">
+                  <label for="player-type">播放器类型:</label>
+                  <select
+                    id="player-type"
+                    class="input-select"
+                    :value="playerType"
+                    @change="$emit('change-player-type', $event.target.value)"
+                  >
+                    <option value="DPlayer">DPlayer</option>
+                    <option value="Plyr">Plyr</option>
+                  </select>
+                </div>
+                <p class="setting-note">播放器类型会保存在当前浏览器中，切换后立即使用新的播放器实例。</p>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h3 class="group-title">服务端设置</h3>
             <!-- Video Paths Section -->
             <div class="setting-section">
-              <h3>视频路径</h3>
+              <h4>视频路径</h4>
               <div class="video-paths">
                 <div v-for="(videoPath, index) in localConfig.videoPaths" :key="index" class="path-item">
                   <input
@@ -39,7 +79,7 @@
 
             <!-- Options Section -->
             <div class="setting-section">
-              <h3>选项</h3>
+              <h4>选项</h4>
               <label class="checkbox-label">
                 <input type="checkbox" v-model="localConfig.usePathIds" />
                 <span>使用 UUID 替代文件路径</span>
@@ -63,25 +103,7 @@
             </div>
 
             <div class="setting-section">
-              <h3>界面布局</h3>
-              <div class="input-group layout-preference-row">
-                <label for="layout-preference">布局模式:</label>
-                <select
-                  id="layout-preference"
-                  class="input-select"
-                  :value="layoutPreference"
-                  @change="setLayoutPreference($event.target.value)"
-                >
-                  <option value="auto">自动</option>
-                  <option value="desktop">桌面布局</option>
-                  <option value="mobile">移动布局</option>
-                </select>
-              </div>
-              <p class="setting-note">自动模式下，较窄视口使用移动布局；也可以手动指定当前设备的显示方式。</p>
-            </div>
-
-            <div class="setting-section">
-              <h3>视频列表</h3>
+              <h4>视频列表</h4>
               <div class="action-row">
                 <div>
                   <div class="action-title">重新读取视频列表</div>
@@ -92,6 +114,7 @@
                   {{ reloading ? '读取中...' : '重新读取' }}
                 </button>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -116,9 +139,13 @@ export default {
     show: {
       type: Boolean,
       required: true
+    },
+    playerType: {
+      type: String,
+      required: true
     }
   },
-  emits: ['close', 'saved', 'reloaded'],
+  emits: ['close', 'saved', 'reloaded', 'change-player-type'],
   setup(props, { emit }) {
     const loading = ref(false)
     const saving = ref(false)
@@ -369,7 +396,23 @@ export default {
   gap: 24px;
 }
 
-.setting-section h3 {
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.group-title {
+  color: var(--color-text, #e0e0e0);
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  padding-bottom: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #3d3d3d);
+}
+
+.setting-section h4 {
   text-align: left;
   margin: 0 0 16px 0;
   font-size: 16px;
