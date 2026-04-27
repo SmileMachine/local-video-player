@@ -103,7 +103,6 @@ export default {
         const video = document.createElement('video')
         const source = document.createElement('source')
         video.setAttribute('playsinline', '')
-        source.type = 'video/mp4'
         video.appendChild(source)
         mount.appendChild(video)
         return video

@@ -36,7 +36,7 @@ export default class PlyrAdapter {
       sources: [
         {
           src: videoInfo.videoUrl,
-          type: "video/mp4",
+          type: videoInfo.contentType || "application/octet-stream",
         },
       ],
       tracks: videoInfo.captionExists

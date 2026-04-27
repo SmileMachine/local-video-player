@@ -1,4 +1,5 @@
 import { ref, computed, onMounted, watch } from "vue";
+import { getVideoContentType } from "../../shared/mediaTypes.js";
 
 let instance = null;
 const SORT_CONFIG_KEY = "video-sort-config";
@@ -46,6 +47,11 @@ export function useVideoLibrary() {
     return `/caption?id=${encodeURIComponent(currentVideoId.value)}`;
   });
 
+  const currentVideoContentType = computed(() => {
+    const fileName = currentPath.value[currentPath.value.length - 1] || "";
+    return getVideoContentType(fileName);
+  });
+
   const currentVideoInfo = ref({ captionExists: false });
   watch(
     () => currentVideoId.value,
@@ -60,6 +66,7 @@ export function useVideoLibrary() {
           currentVideoInfo.value = {
             captionExists: data.exists,
             videoUrl: currentVideoUrl.value,
+            contentType: currentVideoContentType.value,
             captionUrl: data.exists ? currentCaptionUrl.value : "",
             path: currentPath.value,
           }
@@ -68,6 +75,7 @@ export function useVideoLibrary() {
           currentVideoInfo.value = {
             captionExists: false,
             videoUrl: currentVideoUrl.value,
+            contentType: currentVideoContentType.value,
             captionUrl: "",
             path: currentPath.value,
           };

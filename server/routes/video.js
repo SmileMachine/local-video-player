@@ -1,10 +1,10 @@
 import express from "express";
-import path from "path";
 import fs from "fs";
 import { loggerMiddleware } from "../middleware/logger.js";
 import { useConfig } from "../utils/config.js";
 import { useVideoLibrary } from "../services/videoLibrary.js";
 import { logger } from "../utils/logger.js";
+import { getVideoContentType } from "../../shared/mediaTypes.js";
 
 const router = express.Router();
 const videoLibrary = useVideoLibrary();
@@ -29,6 +29,7 @@ router.get("/", loggerMiddleware, async (req, res) => {
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
   const range = req.headers.range;
+  const contentType = getVideoContentType(filePath);
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
@@ -40,7 +41,7 @@ router.get("/", loggerMiddleware, async (req, res) => {
       "Content-Range": `bytes ${start}-${end}/${fileSize}`,
       "Accept-Ranges": "bytes",
       "Content-Length": chunksize,
-      "Content-Type": "video/mp4",
+      "Content-Type": contentType,
     };
     res.writeHead(206, head);
     file.pipe(res);
@@ -48,7 +49,7 @@ router.get("/", loggerMiddleware, async (req, res) => {
     logger.debug(`fileSize: ${fileSize}`);
     const head = {
       "Content-Length": fileSize,
-      "Content-Type": "video/mp4",
+      "Content-Type": contentType,
     };
     res.writeHead(200, head);
     fs.createReadStream(filePath).pipe(res);
