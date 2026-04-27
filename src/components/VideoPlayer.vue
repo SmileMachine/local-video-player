@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { nextTick, ref, onMounted, onUnmounted, watch, toRaw } from 'vue'
+import { nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { createPlayer } from '../players/playerFactory'
 import { useVideoLibrary } from '../composables/useVideoLibrary'
 
@@ -21,6 +21,9 @@ export default {
   setup(props) {
     let player = null
     let playerToken = 0
+    let externalAudio = null
+    let externalAudioCleanup = []
+    let externalAudioVideoElement = null
     const playerMountRef = ref(null)
     const updateCount = ref(10)
 
@@ -80,6 +83,7 @@ export default {
 
     const destroyPlayer = () => {
       playerToken += 1
+      cleanupExternalAudio()
       if (player) {
         player.destroy()
       }
@@ -89,6 +93,168 @@ export default {
       if (playerMountRef.value) {
         playerMountRef.value.replaceChildren()
       }
+    }
+
+    const cleanupExternalAudio = () => {
+      externalAudioCleanup.forEach((cleanup) => cleanup())
+      externalAudioCleanup = []
+
+      if (externalAudio) {
+        externalAudio.pause()
+        externalAudio.removeAttribute('src')
+        externalAudio.load()
+      }
+
+      if (externalAudioVideoElement) {
+        externalAudioVideoElement.muted = false
+      }
+
+      if (player?.setExternalAudio) {
+        player.setExternalAudio(null)
+      }
+
+      externalAudio = null
+      externalAudioVideoElement = null
+    }
+
+    const addExternalAudioListener = (element, eventName, handler) => {
+      element.addEventListener(eventName, handler)
+      externalAudioCleanup.push(() => element.removeEventListener(eventName, handler))
+    }
+
+    const setupExternalAudio = (videoInfo, token, targetPlayer) => {
+      cleanupExternalAudio()
+
+      if (!videoInfo.externalAudioUrl || token !== playerToken || player !== targetPlayer) {
+        return
+      }
+
+      const videoElement = targetPlayer.getMediaElement?.()
+      if (!videoElement) {
+        return
+      }
+
+      const audio = new Audio(videoInfo.externalAudioUrl)
+      audio.preload = 'auto'
+      audio.volume = videoElement.volume
+      audio.playbackRate = videoElement.playbackRate || 1
+
+      externalAudio = audio
+      externalAudioVideoElement = videoElement
+      videoElement.muted = true
+      targetPlayer.setExternalAudio?.(audio)
+      let audioReady = audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+      let resumeAfterAudioReady = false
+      let pendingAudioTime = null
+      const VIDEO_SYNC_THRESHOLD = 0.35
+
+      const syncVideoTime = (force = false) => {
+        if (!externalAudio || token !== playerToken || player !== targetPlayer) {
+          return
+        }
+
+        const drift = audio.currentTime - videoElement.currentTime
+        if (force || Math.abs(drift) > VIDEO_SYNC_THRESHOLD) {
+          videoElement.currentTime = audio.currentTime
+        }
+      }
+
+      const playAudio = () => {
+        if (!externalAudio || token !== playerToken || player !== targetPlayer) {
+          return
+        }
+
+        if (!audioReady) {
+          resumeAfterAudioReady = true
+          pendingAudioTime = videoElement.currentTime
+          videoElement.pause()
+          audio.load()
+          return
+        }
+
+        if (Math.abs(audio.currentTime - videoElement.currentTime) > VIDEO_SYNC_THRESHOLD) {
+          audio.currentTime = videoElement.currentTime
+        }
+        audio.playbackRate = videoElement.playbackRate || 1
+        audio.play().catch((error) => {
+          console.warn('Unable to play compatible audio:', error)
+        })
+      }
+
+      const pauseAudio = () => {
+        if (!videoElement.ended && videoElement.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+          return
+        }
+        audio.pause()
+      }
+
+      const handleSeeked = () => {
+        pendingAudioTime = videoElement.currentTime
+        audio.currentTime = videoElement.currentTime
+        if (!videoElement.paused) {
+          playAudio()
+        }
+      }
+
+      const handleRateChange = () => {
+        audio.playbackRate = videoElement.playbackRate || 1
+      }
+
+      const handleVolumeChange = () => {
+        audio.volume = videoElement.volume
+        videoElement.muted = true
+      }
+
+      const handleAudioCanPlay = () => {
+        audioReady = true
+        if (pendingAudioTime !== null) {
+          const nextTime = pendingAudioTime
+          pendingAudioTime = null
+          if (Math.abs(audio.currentTime - nextTime) > 0.05) {
+            audio.currentTime = nextTime
+            return
+          }
+        }
+        if (resumeAfterAudioReady) {
+          resumeAfterAudioReady = false
+          videoElement.play().catch((error) => {
+            console.warn('Unable to resume video with compatible audio:', error)
+          })
+        }
+      }
+
+      const handleAudioSeeked = () => {
+        if (resumeAfterAudioReady) {
+          resumeAfterAudioReady = false
+          videoElement.play().catch((error) => {
+            console.warn('Unable to resume video with compatible audio:', error)
+          })
+        }
+      }
+
+      const handleAudioError = () => {
+        resumeAfterAudioReady = false
+        console.warn('Compatible audio failed to load')
+      }
+
+      const syncTimer = window.setInterval(() => {
+        if (!videoElement.paused && !videoElement.seeking && !audio.paused) {
+          syncVideoTime()
+        }
+      }, 1500)
+
+      externalAudioCleanup.push(() => window.clearInterval(syncTimer))
+      addExternalAudioListener(videoElement, 'play', playAudio)
+      addExternalAudioListener(videoElement, 'playing', playAudio)
+      addExternalAudioListener(videoElement, 'pause', pauseAudio)
+      addExternalAudioListener(videoElement, 'ended', pauseAudio)
+      addExternalAudioListener(videoElement, 'seeking', pauseAudio)
+      addExternalAudioListener(videoElement, 'seeked', handleSeeked)
+      addExternalAudioListener(videoElement, 'ratechange', handleRateChange)
+      addExternalAudioListener(videoElement, 'volumechange', handleVolumeChange)
+      addExternalAudioListener(audio, 'canplay', handleAudioCanPlay)
+      addExternalAudioListener(audio, 'seeked', handleAudioSeeked)
+      addExternalAudioListener(audio, 'error', handleAudioError)
     }
 
     const createPlayerElement = () => {
@@ -138,7 +304,6 @@ export default {
           if (nextPlayer.isPlaying() && currentVideoInfo.value.path && updateCount.value <= 0) {
             updateCount.value = 10
             saveVideoTime(currentVideoInfo.value.path, nextPlayer.getCurrentTime())
-            console.log(currentVideoInfo.value.path)
           }
         },
         onEnded: () => {
@@ -163,6 +328,7 @@ export default {
       if (currentVideoInfo.value.videoUrl) {
         player.once('canplay', () => handleReady(token, player))
         player.setSource(currentVideoInfo.value)
+        setupExternalAudio(currentVideoInfo.value, token, player)
       }
     }
 
@@ -215,12 +381,12 @@ export default {
 
     // Watch for changes in the current video
     watch(() => currentVideoInfo.value, () => {
-      console.log('currentVideoInfo:', toRaw(currentVideoInfo.value))
       if (player && currentVideoInfo.value.videoUrl) {
         const token = playerToken
         const currentPlayer = player
         player.once('canplay', () => handleReady(token, currentPlayer))
         player.setSource(currentVideoInfo.value)
+        setupExternalAudio(currentVideoInfo.value, token, currentPlayer)
       }
     })
 

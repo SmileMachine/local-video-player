@@ -1,4 +1,5 @@
 import { ref, computed, onMounted, watch } from "vue";
+import { needsCompatibleAudio } from "../../shared/audioTranscode.js";
 import { getVideoContentType } from "../../shared/mediaTypes.js";
 
 let instance = null;
@@ -13,6 +14,7 @@ export function useVideoLibrary() {
   }
   const videos = ref([]);
   const currentVideoId = ref("");
+  const currentVideoItem = ref(null);
   const currentPath = ref(
     localStorage.getItem("currentPath")
       ? JSON.parse(localStorage.getItem("currentPath"))
@@ -53,33 +55,59 @@ export function useVideoLibrary() {
   });
 
   const currentVideoInfo = ref({ captionExists: false });
+  const getCaptionStatus = async (videoId) => {
+    const response = await fetch(`/caption/status?id=${encodeURIComponent(videoId)}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch caption status");
+    }
+    return response.json();
+  };
+
+  const getAudioStatus = async (videoId) => {
+    if (!needsCompatibleAudio(currentVideoItem.value?.info?.audio)) {
+      return { enabled: false, needed: false, url: "" };
+    }
+
+    const response = await fetch(`/audio/status?id=${encodeURIComponent(videoId)}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch audio status");
+    }
+    return response.json();
+  };
+
   watch(
     () => currentVideoId.value,
     async (newId) => {
       if (newId) {
-        try {
-          const response = await fetch(
-            `/caption/status?id=${encodeURIComponent(newId)}`
-          );
-          const data = await response.json();
+        const [captionResult, audioResult] = await Promise.allSettled([
+          getCaptionStatus(newId),
+          getAudioStatus(newId),
+        ]);
 
-          currentVideoInfo.value = {
-            captionExists: data.exists,
-            videoUrl: currentVideoUrl.value,
-            contentType: currentVideoContentType.value,
-            captionUrl: data.exists ? currentCaptionUrl.value : "",
-            path: currentPath.value,
-          }
-        } catch (error) {
-          console.error("Error fetching caption status:", error);
-          currentVideoInfo.value = {
-            captionExists: false,
-            videoUrl: currentVideoUrl.value,
-            contentType: currentVideoContentType.value,
-            captionUrl: "",
-            path: currentPath.value,
-          };
+        if (captionResult.status === "rejected") {
+          console.error("Error fetching caption status:", captionResult.reason);
         }
+        if (audioResult.status === "rejected") {
+          console.error("Error fetching audio status:", audioResult.reason);
+        }
+
+        const captionStatus = captionResult.status === "fulfilled"
+          ? captionResult.value
+          : { exists: false };
+        const audioStatus = audioResult.status === "fulfilled"
+          ? audioResult.value
+          : { enabled: false, needed: false, url: "" };
+
+        currentVideoInfo.value = {
+          captionExists: captionStatus.exists,
+          videoUrl: currentVideoUrl.value,
+          contentType: currentVideoContentType.value,
+          captionUrl: captionStatus.exists ? currentCaptionUrl.value : "",
+          externalAudioUrl: audioStatus.enabled && audioStatus.needed ? audioStatus.url : "",
+          externalAudio: audioStatus,
+          mediaInfo: currentVideoItem.value?.info || null,
+          path: currentPath.value,
+        };
       }
     }
   );
@@ -117,6 +145,7 @@ export function useVideoLibrary() {
       if (!response.ok) throw new Error("Failed to fetch videos");
       videos.value = await response.json();
       const currentVideo = findVideoByPath(videos.value, currentPath.value);
+      currentVideoItem.value = currentVideo || null;
       currentVideoId.value = currentVideo?.id || "";
     } catch (error) {
       console.error("Error fetching videos:", error);
@@ -145,6 +174,7 @@ export function useVideoLibrary() {
   };
 
   const selectVideo = ({ id, path }) => {
+    currentVideoItem.value = findVideoByPath(videos.value, path);
     currentVideoId.value = id;
     currentPath.value = path;
     localStorage.setItem("currentPath", JSON.stringify(path));

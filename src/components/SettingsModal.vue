@@ -103,6 +103,43 @@
             </div>
 
             <div class="setting-section">
+              <h4>音频兼容</h4>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="localConfig.audioTranscode.enabled" />
+                <span>为不兼容音轨生成 AAC 音频缓存</span>
+              </label>
+              <div class="input-group">
+                <label>音频缓存目录:</label>
+                <input
+                  v-model="localConfig.audioTranscode.cacheDir"
+                  type="text"
+                  class="input-text"
+                  placeholder="cache/audio"
+                />
+              </div>
+              <div class="input-group">
+                <label>最大声道数:</label>
+                <input
+                  v-model.number="localConfig.audioTranscode.maxChannels"
+                  type="number"
+                  min="1"
+                  max="8"
+                  class="input-number"
+                />
+              </div>
+              <div class="input-group">
+                <label>最大码率:</label>
+                <input
+                  v-model="localConfig.audioTranscode.maxBitrate"
+                  type="text"
+                  class="input-text"
+                  placeholder="384k"
+                />
+              </div>
+              <p class="setting-note">声道数和码率按上限处理；源音轨低于设置值时，不会人为提高码率。</p>
+            </div>
+
+            <div class="setting-section">
               <h4>视频列表</h4>
               <div class="action-row">
                 <div>
@@ -157,6 +194,13 @@ export default {
       cacheName: 'video-info',
       usePathIds: true,
       getVideoInfo: true,
+      audioTranscode: {
+        enabled: true,
+        cacheDir: 'cache/audio',
+        codec: 'aac',
+        maxBitrate: '384k',
+        maxChannels: 2
+      },
       videoPaths: []
     })
 
@@ -181,6 +225,13 @@ export default {
           cacheName: config.cacheName || 'video-info',
           usePathIds: config.usePathIds !== undefined ? config.usePathIds : true,
           getVideoInfo: config.getVideoInfo !== undefined ? config.getVideoInfo : true,
+          audioTranscode: {
+            enabled: config.audioTranscode?.enabled ?? true,
+            cacheDir: config.audioTranscode?.cacheDir || 'cache/audio',
+            codec: config.audioTranscode?.codec || 'aac',
+            maxBitrate: config.audioTranscode?.maxBitrate || '384k',
+            maxChannels: config.audioTranscode?.maxChannels || 2
+          },
           videoPaths: config.videoPaths || []
         })
       } catch (err) {
@@ -435,6 +486,7 @@ export default {
 .input-name,
 .input-path,
 .input-text,
+.input-number,
 .input-select {
   background-color: var(--color-surface, #1e1e1e);
   border: 1px solid var(--color-border, #3d3d3d);
@@ -448,6 +500,7 @@ export default {
 .input-name:focus,
 .input-path:focus,
 .input-text:focus,
+.input-number:focus,
 .input-select:focus {
   outline: none;
   border-color: var(--color-primary, #2196f3);
@@ -464,6 +517,10 @@ export default {
 
 .input-text {
   width: 200px;
+}
+
+.input-number {
+  width: 92px;
 }
 
 .input-select {

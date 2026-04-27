@@ -2,6 +2,7 @@ import Plyr from "plyr";
 
 export default class PlyrAdapter {
   constructor(options) {
+    this.externalAudio = null;
     this.player = new Plyr(options.container, {
       controls: [
         "play",
@@ -96,7 +97,16 @@ export default class PlyrAdapter {
   }
 
   toggleMute() {
-    // it seems plyr handles mute
-    // this.player.muted = !this.player.muted;
+    if (this.externalAudio) {
+      this.externalAudio.muted = !this.externalAudio.muted;
+    }
+  }
+
+  getMediaElement() {
+    return this.player.media;
+  }
+
+  setExternalAudio(audio) {
+    this.externalAudio = audio;
   }
 }

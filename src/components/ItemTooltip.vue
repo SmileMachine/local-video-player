@@ -64,6 +64,7 @@
 <script>
 import moment from 'moment'
 import { computed } from 'vue';
+import { isBrowserAudioCodecSupported } from '../../shared/audioTranscode.js';
 
 export default {
   name: 'ItemTooltip',
@@ -129,9 +130,7 @@ export default {
     }
 
     const isAudioCodecSupported = (codec) => {
-      const supported = ['aac', 'mp3', 'opus', 'vorbis', 'flac']
-      // EAC3/AC3 在某些系统上可能部分支持，标记为不确定
-      return supported.includes(codec?.toLowerCase())
+      return isBrowserAudioCodecSupported(codec)
     }
 
     const getVideoCodecClass = (codec) => {

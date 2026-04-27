@@ -141,7 +141,7 @@ export default {
     }
 
     const handleSelect = () => {
-      emit('select-video', { id: props.item.id, path: props.path })
+      emit('select-video', { ...props.item, path: props.path })
     }
 
     const handleHeaderClick = (event) => {
@@ -181,7 +181,7 @@ export default {
     // Used to randomly select a video in the directory
     const traverse = (item, path, select) => {
       if (item.type === 'file') {
-        return { id: item.id, path: path }
+        return { ...item, path: path }
       }
       for (const child of item.children) {
         if (child.type === 'file') {

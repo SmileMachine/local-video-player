@@ -104,6 +104,7 @@ export class VideoScanner {
                 profile: audioStream.profile || null,
                 channels: audioStream.channels || null,
                 sampleRate: audioStream.sample_rate || null,
+                bitRate: audioStream.bit_rate ? Number(audioStream.bit_rate) : null,
               }
             : null,
         };

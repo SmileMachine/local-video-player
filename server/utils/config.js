@@ -8,6 +8,13 @@ const DEFAULT_CONFIG = {
   cacheName: "video-info",
   usePathIds: true,
   getVideoInfo: true,
+  audioTranscode: {
+    enabled: true,
+    cacheDir: "cache/audio",
+    codec: "aac",
+    maxBitrate: "384k",
+    maxChannels: 2,
+  },
   videoPaths: [
   ],
 };

@@ -70,6 +70,27 @@ router.put("/config", async (req, res) => {
       return res.status(400).json({ error: "usePathIds must be a boolean" });
     }
 
+    if (newConfig.audioTranscode !== undefined) {
+      const audioTranscode = newConfig.audioTranscode;
+      if (typeof audioTranscode !== 'object' || audioTranscode === null || Array.isArray(audioTranscode)) {
+        logger.error("Invalid audioTranscode value:", audioTranscode);
+        return res.status(400).json({ error: "audioTranscode must be an object" });
+      }
+
+      if (audioTranscode.enabled !== undefined && typeof audioTranscode.enabled !== 'boolean') {
+        logger.error("Invalid audioTranscode.enabled value:", audioTranscode.enabled);
+        return res.status(400).json({ error: "audioTranscode.enabled must be a boolean" });
+      }
+
+      if (audioTranscode.maxChannels !== undefined) {
+        const maxChannels = Number.parseInt(audioTranscode.maxChannels, 10);
+        if (!Number.isFinite(maxChannels) || maxChannels <= 0) {
+          logger.error("Invalid audioTranscode.maxChannels value:", audioTranscode.maxChannels);
+          return res.status(400).json({ error: "audioTranscode.maxChannels must be a positive number" });
+        }
+      }
+    }
+
     // Write to config file
     fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), "utf8");
     logger.info("Config saved successfully");

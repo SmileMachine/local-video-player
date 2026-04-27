@@ -2,6 +2,7 @@ import DPlayer from "dplayer";
 
 export default class DPlayerAdapter {
   constructor(options) {
+    this.externalAudio = null;
     this.player = new DPlayer({
       container: options.container,
       screenshot: true,
@@ -88,6 +89,18 @@ export default class DPlayerAdapter {
   }
 
   toggleMute() {
+    if (this.externalAudio) {
+      this.externalAudio.muted = !this.externalAudio.muted;
+      return;
+    }
     this.player.video.muted = !this.player.video.muted;
+  }
+
+  getMediaElement() {
+    return this.player.video;
+  }
+
+  setExternalAudio(audio) {
+    this.externalAudio = audio;
   }
 }
