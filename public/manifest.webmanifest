@@ -1,0 +1,40 @@
+{
+  "name": "Video Player",
+  "short_name": "Video",
+  "description": "A local video player for browsing and playing configured video libraries.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#242424",
+  "theme_color": "#242424",
+  "orientation": "any",
+  "categories": ["entertainment", "video"],
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Video Player",
+      "short_name": "Open",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/pwa-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
