@@ -6,7 +6,9 @@ import { useVideoLibrary } from "../services/videoLibrary.js";
 import {
   ensureCompatibleAudio,
   getAudioCachePath,
+  getAudioCacheStatus,
   getCompatibleAudioStatus,
+  startCompatibleAudio,
 } from "../services/audioCache.js";
 import { logger } from "../utils/logger.js";
 
@@ -19,16 +21,6 @@ const resolveVideoPath = async (req) => {
     return videoLibrary.getIdMap()[decodeURIComponent(req.query.id || "")];
   }
   return decodeURIComponent(req.query.path || "");
-};
-
-const buildAudioUrl = (req) => {
-  if (req.query.id) {
-    return `/audio?id=${encodeURIComponent(req.query.id)}`;
-  }
-  if (req.query.path) {
-    return `/audio?path=${encodeURIComponent(req.query.path)}`;
-  }
-  return "";
 };
 
 const buildCachedAudioUrl = (key) => `/audio/cache/${encodeURIComponent(key)}.m4a`;
@@ -71,12 +63,14 @@ router.get("/status", loggerMiddleware, async (req, res) => {
 
     let status = await getCompatibleAudioStatus(filePath);
     if (status.enabled && status.needed && !status.exists) {
-      const descriptor = await ensureCompatibleAudio(filePath);
+      const descriptor = await startCompatibleAudio(filePath);
       status = {
         key: descriptor.key,
         enabled: descriptor.enabled,
         needed: descriptor.needed,
-        exists: true,
+        exists: descriptor.exists,
+        generating: descriptor.generating,
+        progress: descriptor.progress,
         audioInfo: descriptor.audioInfo,
         output: descriptor.output,
       };
@@ -84,13 +78,31 @@ router.get("/status", loggerMiddleware, async (req, res) => {
 
     res.json({
       ...status,
-      url: status.enabled && status.needed && status.key
+      url: status.enabled && status.needed && status.exists && status.key
         ? buildCachedAudioUrl(status.key)
-        : buildAudioUrl(req),
+        : "",
     });
   } catch (error) {
     logger.error("Error checking compatible audio status:", error);
     res.status(500).json({ error: "Failed to check compatible audio status" });
+  }
+});
+
+router.get("/cache/:fileName/status", loggerMiddleware, async (req, res) => {
+  try {
+    const key = String(req.params.fileName || "").replace(/\.m4a$/i, "");
+    const status = await getAudioCacheStatus(key);
+    if (!status) {
+      return res.status(404).json({ error: "Audio cache not found" });
+    }
+
+    res.json({
+      ...status,
+      url: status.exists ? buildCachedAudioUrl(key) : "",
+    });
+  } catch (error) {
+    logger.error("Error checking cached compatible audio status:", error);
+    res.status(500).json({ error: "Failed to check cached compatible audio status" });
   }
 });
 

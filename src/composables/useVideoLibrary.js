@@ -7,6 +7,7 @@ const SORT_CONFIG_KEY = "video-sort-config";
 const DEFAULT_SORT_BY = "name";
 const DEFAULT_SORT_ORDER = "asc";
 const SORT_FIELDS = ["name", "duration", "size", "mtime"];
+const AUDIO_STATUS_POLL_INTERVAL_MS = 1000;
 
 export function useVideoLibrary() {
   if (instance) {
@@ -55,6 +56,8 @@ export function useVideoLibrary() {
   });
 
   const currentVideoInfo = ref({ captionExists: false });
+  let videoInfoRequestId = 0;
+
   const getCaptionStatus = async (videoId) => {
     const response = await fetch(`/caption/status?id=${encodeURIComponent(videoId)}`);
     if (!response.ok) {
@@ -75,39 +78,112 @@ export function useVideoLibrary() {
     return response.json();
   };
 
+  const getAudioCacheStatus = async (key) => {
+    const response = await fetch(`/audio/cache/${encodeURIComponent(key)}.m4a/status`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch audio cache status");
+    }
+    return response.json();
+  };
+
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
   watch(
     () => currentVideoId.value,
     async (newId) => {
       if (newId) {
-        const [captionResult, audioResult] = await Promise.allSettled([
-          getCaptionStatus(newId),
-          getAudioStatus(newId),
-        ]);
+        const requestId = ++videoInfoRequestId;
+        const audioNeeded = needsCompatibleAudio(currentVideoItem.value?.info?.audio);
+        let captionStatus = { exists: false };
 
-        if (captionResult.status === "rejected") {
-          console.error("Error fetching caption status:", captionResult.reason);
-        }
-        if (audioResult.status === "rejected") {
-          console.error("Error fetching audio status:", audioResult.reason);
+        try {
+          captionStatus = await getCaptionStatus(newId);
+        } catch (error) {
+          console.error("Error fetching caption status:", error);
         }
 
-        const captionStatus = captionResult.status === "fulfilled"
-          ? captionResult.value
-          : { exists: false };
-        const audioStatus = audioResult.status === "fulfilled"
-          ? audioResult.value
-          : { enabled: false, needed: false, url: "" };
+        if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
+          return;
+        }
 
         currentVideoInfo.value = {
           captionExists: captionStatus.exists,
           videoUrl: currentVideoUrl.value,
           contentType: currentVideoContentType.value,
           captionUrl: captionStatus.exists ? currentCaptionUrl.value : "",
-          externalAudioUrl: audioStatus.enabled && audioStatus.needed ? audioStatus.url : "",
-          externalAudio: audioStatus,
+          externalAudioUrl: "",
+          externalAudioPreparing: audioNeeded,
+          externalAudioProgress: null,
+          externalAudio: { enabled: false, needed: audioNeeded, url: "" },
           mediaInfo: currentVideoItem.value?.info || null,
           path: currentPath.value,
         };
+
+        if (!audioNeeded) {
+          return;
+        }
+
+        try {
+          let audioStatus = await getAudioStatus(newId);
+          if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
+            return;
+          }
+
+          currentVideoInfo.value = {
+            ...currentVideoInfo.value,
+            externalAudioProgress: audioStatus.progress ?? null,
+            externalAudio: audioStatus,
+          };
+
+          while (audioStatus.key && !audioStatus.exists) {
+            await sleep(AUDIO_STATUS_POLL_INTERVAL_MS);
+            if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
+              return;
+            }
+
+            audioStatus = await getAudioCacheStatus(audioStatus.key);
+            if (audioStatus.error) {
+              throw new Error(audioStatus.error);
+            }
+            if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
+              return;
+            }
+
+            currentVideoInfo.value = {
+              ...currentVideoInfo.value,
+              externalAudioProgress: audioStatus.progress ?? currentVideoInfo.value.externalAudioProgress ?? null,
+              externalAudio: {
+                ...currentVideoInfo.value.externalAudio,
+                ...audioStatus,
+              },
+            };
+          }
+
+          const finalAudioStatus = {
+            ...currentVideoInfo.value.externalAudio,
+            ...audioStatus,
+          };
+
+          currentVideoInfo.value = {
+            ...currentVideoInfo.value,
+            externalAudioUrl: finalAudioStatus.enabled && finalAudioStatus.needed ? finalAudioStatus.url : "",
+            externalAudioPreparing: false,
+            externalAudioProgress: finalAudioStatus.progress ?? 100,
+            externalAudio: finalAudioStatus,
+          };
+        } catch (error) {
+          console.error("Error fetching audio status:", error);
+          if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
+            return;
+          }
+
+          currentVideoInfo.value = {
+            ...currentVideoInfo.value,
+            externalAudioPreparing: false,
+            externalAudioProgress: null,
+            externalAudio: { enabled: false, needed: true, url: "", error: error.message },
+          };
+        }
       }
     }
   );

@@ -100,7 +100,26 @@ const buildDescriptor = async (filePath) => {
   };
 };
 
-const generateAudio = async (sourcePath, descriptor) => {
+const getProgressForKey = (key) => {
+  const job = inFlightJobs.get(key);
+  return {
+    generating: Boolean(job && !job.done && !job.error),
+    progress: job?.progress ?? null,
+    error: job?.error ?? null,
+  };
+};
+
+const buildStatus = (descriptor) => ({
+  key: descriptor.key || null,
+  enabled: descriptor.enabled,
+  needed: descriptor.needed,
+  exists: descriptor.exists,
+  ...getProgressForKey(descriptor.key),
+  audioInfo: descriptor.audioInfo,
+  output: descriptor.output,
+});
+
+const generateAudio = async (sourcePath, descriptor, job) => {
   await fs.promises.mkdir(path.dirname(descriptor.filePath), { recursive: true });
   await fs.promises.rm(descriptor.tempPath, { force: true });
 
@@ -116,27 +135,26 @@ const generateAudio = async (sourcePath, descriptor) => {
       .audioBitrate(descriptor.output.bitrate)
       .format("ipod")
       .output(descriptor.tempPath)
+      .on("progress", (progress) => {
+        if (Number.isFinite(progress.percent)) {
+          job.progress = Math.max(job.progress ?? 0, Math.min(99, progress.percent));
+        }
+      })
       .on("end", resolve)
       .on("error", reject)
       .run();
   });
 
   await fs.promises.rename(descriptor.tempPath, descriptor.filePath);
+  job.progress = 100;
 };
 
 export const getCompatibleAudioStatus = async (filePath) => {
   const descriptor = await buildDescriptor(filePath);
-  return {
-    key: descriptor.key || null,
-    enabled: descriptor.enabled,
-    needed: descriptor.needed,
-    exists: descriptor.exists,
-    audioInfo: descriptor.audioInfo,
-    output: descriptor.output,
-  };
+  return buildStatus(descriptor);
 };
 
-export const ensureCompatibleAudio = async (filePath) => {
+export const startCompatibleAudio = async (filePath) => {
   const descriptor = await buildDescriptor(filePath);
 
   if (!descriptor.enabled) {
@@ -155,16 +173,44 @@ export const ensureCompatibleAudio = async (filePath) => {
     return descriptor;
   }
 
-  const jobKey = descriptor.filePath;
+  const jobKey = descriptor.key;
   if (!inFlightJobs.has(jobKey)) {
-    inFlightJobs.set(
-      jobKey,
-      generateAudio(filePath, descriptor).finally(() => inFlightJobs.delete(jobKey))
-    );
+    const job = { done: false, error: null, progress: 0, promise: null };
+    job.promise = generateAudio(filePath, descriptor, job)
+      .then(() => {
+        job.done = true;
+      })
+      .catch((error) => {
+        job.error = error.message || "Failed to generate compatible audio";
+      })
+      .finally(() => {
+        setTimeout(() => inFlightJobs.delete(jobKey), 30_000);
+      });
+    inFlightJobs.set(jobKey, job);
   }
 
-  await inFlightJobs.get(jobKey);
-  return { ...descriptor, exists: true };
+  return { ...descriptor, ...getProgressForKey(descriptor.key) };
+};
+
+export const ensureCompatibleAudio = async (filePath) => {
+  const descriptor = await startCompatibleAudio(filePath);
+  if (descriptor.exists) {
+    return descriptor;
+  }
+
+  await inFlightJobs.get(descriptor.key)?.promise;
+  const job = inFlightJobs.get(descriptor.key);
+  if (job?.error) {
+    const error = new Error(job.error);
+    error.statusCode = 500;
+    throw error;
+  }
+  if (!fs.existsSync(descriptor.filePath)) {
+    const error = new Error("Compatible audio was not generated");
+    error.statusCode = 500;
+    throw error;
+  }
+  return { ...descriptor, exists: true, generating: false, progress: 100 };
 };
 
 export const getAudioCachePath = async (key) => {
@@ -175,4 +221,17 @@ export const getAudioCachePath = async (key) => {
   const { getConfig } = await useConfig();
   const transcodeConfig = normalizeAudioTranscodeConfig(getConfig());
   return path.join(path.resolve(transcodeConfig.cacheDir), `${key}.m4a`);
+};
+
+export const getAudioCacheStatus = async (key) => {
+  const filePath = await getAudioCachePath(key);
+  if (!filePath) {
+    return null;
+  }
+
+  return {
+    key,
+    exists: fs.existsSync(filePath),
+    ...getProgressForKey(key),
+  };
 };

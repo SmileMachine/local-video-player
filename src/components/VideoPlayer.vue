@@ -1,11 +1,18 @@
 <template>
   <div class="video-player">
     <div ref="playerMountRef" class="player-mount"></div>
+    <div v-if="currentVideoInfo.externalAudioPreparing" class="audio-preparing">
+      <span class="audio-preparing-spinner" aria-hidden="true"></span>
+      <span>正在准备兼容音频</span>
+      <span v-if="audioPreparingProgressText" class="audio-preparing-progress">
+        {{ audioPreparingProgressText }}
+      </span>
+    </div>
   </div>
 </template>
 
 <script>
-import { nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { createPlayer } from '../players/playerFactory'
 import { useVideoLibrary } from '../composables/useVideoLibrary'
 
@@ -24,6 +31,8 @@ export default {
     let externalAudio = null
     let externalAudioCleanup = []
     let externalAudioVideoElement = null
+    let activeVideoUrl = ''
+    let activeExternalAudioUrl = ''
     const playerMountRef = ref(null)
     const updateCount = ref(10)
 
@@ -32,6 +41,13 @@ export default {
     const buildHistoryKey = (vidKey) => Array.isArray(vidKey) ? vidKey.join(',') : String(vidKey || '')
 
     const { currentVideoInfo } = useVideoLibrary()
+    const audioPreparingProgressText = computed(() => {
+      const progress = Number(currentVideoInfo.value.externalAudioProgress)
+      if (!Number.isFinite(progress)) {
+        return ''
+      }
+      return `${Math.max(0, Math.min(100, Math.round(progress)))}%`
+    })
 
     // Get the saved playback time
     const loadVideoTime = (videoUrl) => {
@@ -89,6 +105,8 @@ export default {
       }
       player = null
       window.__videoPlayer = null
+      activeVideoUrl = ''
+      activeExternalAudioUrl = ''
 
       if (playerMountRef.value) {
         playerMountRef.value.replaceChildren()
@@ -115,6 +133,7 @@ export default {
 
       externalAudio = null
       externalAudioVideoElement = null
+      activeExternalAudioUrl = ''
     }
 
     const addExternalAudioListener = (element, eventName, handler) => {
@@ -126,6 +145,7 @@ export default {
       cleanupExternalAudio()
 
       if (!videoInfo.externalAudioUrl || token !== playerToken || player !== targetPlayer) {
+        activeExternalAudioUrl = ''
         return
       }
 
@@ -143,6 +163,7 @@ export default {
       externalAudioVideoElement = videoElement
       videoElement.muted = true
       targetPlayer.setExternalAudio?.(audio)
+      activeExternalAudioUrl = videoInfo.externalAudioUrl
       let audioReady = audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
       let resumeAfterAudioReady = false
       let pendingAudioTime = null
@@ -255,6 +276,49 @@ export default {
       addExternalAudioListener(audio, 'canplay', handleAudioCanPlay)
       addExternalAudioListener(audio, 'seeked', handleAudioSeeked)
       addExternalAudioListener(audio, 'error', handleAudioError)
+      if (!videoElement.paused) {
+        playAudio()
+      }
+    }
+
+    const updateExternalAudioPreparingState = (videoInfo, targetPlayer) => {
+      const videoElement = targetPlayer.getMediaElement?.()
+      if (!videoElement) {
+        return
+      }
+
+      if (videoInfo.externalAudioPreparing || videoInfo.externalAudioUrl) {
+        videoElement.muted = true
+      }
+    }
+
+    const applyVideoInfo = (videoInfo, token, targetPlayer) => {
+      if (!videoInfo.videoUrl) {
+        return
+      }
+
+      const isNewVideo = videoInfo.videoUrl !== activeVideoUrl
+      if (isNewVideo) {
+        cleanupExternalAudio()
+        activeVideoUrl = videoInfo.videoUrl
+        activeExternalAudioUrl = ''
+        targetPlayer.once('canplay', () => handleReady(token, targetPlayer))
+        targetPlayer.setSource(videoInfo)
+        updateExternalAudioPreparingState(videoInfo, targetPlayer)
+        if (videoInfo.externalAudioUrl) {
+          setupExternalAudio(videoInfo, token, targetPlayer)
+        }
+        return
+      }
+
+      updateExternalAudioPreparingState(videoInfo, targetPlayer)
+      if (videoInfo.externalAudioUrl !== activeExternalAudioUrl) {
+        if (videoInfo.externalAudioUrl) {
+          setupExternalAudio(videoInfo, token, targetPlayer)
+        } else {
+          cleanupExternalAudio()
+        }
+      }
     }
 
     const createPlayerElement = () => {
@@ -326,9 +390,7 @@ export default {
       window.__videoPlayer = player
 
       if (currentVideoInfo.value.videoUrl) {
-        player.once('canplay', () => handleReady(token, player))
-        player.setSource(currentVideoInfo.value)
-        setupExternalAudio(currentVideoInfo.value, token, player)
+        applyVideoInfo(currentVideoInfo.value, token, player)
       }
     }
 
@@ -384,9 +446,7 @@ export default {
       if (player && currentVideoInfo.value.videoUrl) {
         const token = playerToken
         const currentPlayer = player
-        player.once('canplay', () => handleReady(token, currentPlayer))
-        player.setSource(currentVideoInfo.value)
-        setupExternalAudio(currentVideoInfo.value, token, currentPlayer)
+        applyVideoInfo(currentVideoInfo.value, token, currentPlayer)
       }
     })
 
@@ -402,6 +462,7 @@ export default {
     return {
       playerMountRef,
       currentVideoInfo,
+      audioPreparingProgressText,
     }
   }
 }
@@ -419,6 +480,7 @@ export default {
   background-color: #000;
   margin: 0;
   display: flex;
+  position: relative;
 }
 
 .layout-mobile .video-player {
@@ -441,5 +503,43 @@ export default {
 
 .dplayer-subtitle {
   text-shadow: 1px 1px 10px rgb(0, 0, 0) !important;
+}
+
+.audio-preparing {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.audio-preparing-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-top-color: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  animation: audio-preparing-spin 0.8s linear infinite;
+  flex: 0 0 auto;
+}
+
+.audio-preparing-progress {
+  color: rgba(255, 255, 255, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes audio-preparing-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
