@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 
 const router = Router();
-const { getSecureVideos, onUpdate } = useVideoLibrary();
+const { getSecureVideos, reloadVideos, onUpdate } = useVideoLibrary();
 
 let videos = {};
 onUpdate(() => {
@@ -15,6 +15,16 @@ onUpdate(() => {
 
 router.get("/videos", (req, res) => {
   res.json(videos);
+});
+
+router.post("/videos/reload", async (req, res) => {
+  try {
+    videos = await reloadVideos({ useCache: false });
+    res.json({ videos });
+  } catch (error) {
+    logger.error("Error reloading videos:", error);
+    res.status(500).json({ error: "Failed to reload videos" });
+  }
 });
 
 // Config endpoints

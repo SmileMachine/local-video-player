@@ -295,6 +295,7 @@ export function useVideoLibrary() {
     sortOrder,
     setSortBy,
     toggleSortOrder,
+    fetchVideos,
     selectVideo,
     handleKeydown,
     showShortcutsModal,

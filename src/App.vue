@@ -14,7 +14,12 @@
     />
     <VideoPlayer :player-type="playerType" />
     <ShortcutsGuideModal :show="showShortcutsModal" @close="showShortcutsModal = false" />
-    <SettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @saved="handleConfigSaved" />
+    <SettingsModal
+      :show="showSettingsModal"
+      @close="showSettingsModal = false"
+      @saved="handleConfigSaved"
+      @reloaded="handleVideosReloaded"
+    />
   </div>
 </template>
 
@@ -45,6 +50,7 @@ export default {
       sortOrder,
       setSortBy,
       toggleSortOrder,
+      fetchVideos,
       selectVideo,
       showShortcutsModal,
     } = useVideoLibrary()
@@ -57,6 +63,10 @@ export default {
     const handleConfigSaved = () => {
       // Reload the page to apply new configuration
       window.location.reload()
+    }
+
+    const handleVideosReloaded = async () => {
+      await fetchVideos()
     }
 
     // 初始化主题
@@ -78,7 +88,8 @@ export default {
       selectVideo,
       showShortcutsModal,
       showSettingsModal,
-      handleConfigSaved
+      handleConfigSaved,
+      handleVideosReloaded
     }
   }
 }

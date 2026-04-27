@@ -61,6 +61,20 @@
                 />
               </div>
             </div>
+
+            <div class="setting-section">
+              <h3>视频列表</h3>
+              <div class="action-row">
+                <div>
+                  <div class="action-title">重新读取视频列表</div>
+                  <div class="action-description">按当前视频路径扫描本地文件，并更新侧边栏列表。</div>
+                  <div v-if="reloadMessage" class="action-message">{{ reloadMessage }}</div>
+                </div>
+                <button class="btn-secondary" @click="reloadVideos" :disabled="reloading || saving">
+                  {{ reloading ? '读取中...' : '重新读取' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -85,11 +99,13 @@ export default {
       required: true
     }
   },
-  emits: ['close', 'saved'],
+  emits: ['close', 'saved', 'reloaded'],
   setup(props, { emit }) {
     const loading = ref(false)
     const saving = ref(false)
+    const reloading = ref(false)
     const error = ref('')
+    const reloadMessage = ref('')
     const localConfig = reactive({
       cacheName: 'video-info',
       usePathIds: true,
@@ -107,6 +123,7 @@ export default {
     const loadConfig = async () => {
       loading.value = true
       error.value = ''
+      reloadMessage.value = ''
       try {
         const response = await fetch('/api/config')
         if (!response.ok) throw new Error('加载配置失败')
@@ -178,6 +195,30 @@ export default {
       }
     }
 
+    const reloadVideos = async () => {
+      reloading.value = true
+      error.value = ''
+      reloadMessage.value = ''
+
+      try {
+        const response = await fetch('/api/videos/reload', {
+          method: 'POST'
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || '重新读取视频列表失败')
+        }
+
+        emit('reloaded')
+        reloadMessage.value = '视频列表已更新'
+      } catch (err) {
+        error.value = err.message
+      } finally {
+        reloading.value = false
+      }
+    }
+
     const close = () => {
       emit('close')
     }
@@ -189,11 +230,14 @@ export default {
     return {
       loading,
       saving,
+      reloading,
       error,
+      reloadMessage,
       localConfig,
       addPath,
       removePath,
       save,
+      reloadVideos,
       close,
       handleOverlayClick
     }
@@ -433,6 +477,33 @@ export default {
   flex: 1;
 }
 
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.action-title {
+  color: var(--color-text, #e0e0e0);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.action-description,
+.action-message {
+  color: var(--color-text-muted, #b0b0b0);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 4px;
+  text-align: left;
+}
+
+.action-message {
+  color: var(--color-primary, #2196f3);
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -473,6 +544,18 @@ export default {
 
 .btn-secondary:hover {
   background-color: var(--color-surface-hover, #3d3d3d);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 /* Modal transition animations */

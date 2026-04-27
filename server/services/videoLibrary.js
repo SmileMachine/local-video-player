@@ -11,7 +11,9 @@ class VideoLibrary extends EventEmitter {
   constructor() {
     super();
     this.videos = [];
+    this.secureVideos = [];
     this.idMap = {}; // used when `usePathIds` is true
+    this.reloadPromise = null;
     this.init();
   }
 
@@ -50,15 +52,31 @@ class VideoLibrary extends EventEmitter {
   }
 
   async handleConfigUpdate() {
-    const config = (await useConfig()).getConfig();
-    const { videoPaths = [], usePathIds = true } = config;
-    this.videoScanner = new VideoScanner({
-      cacheName: config.cacheName,
-      getInfo: config.getVideoInfo ?? true,
+    await this.reloadVideos({ useCache: Boolean(process.env.USE_CACHE) });
+  }
+
+  async reloadVideos({ useCache = false } = {}) {
+    if (this.reloadPromise) {
+      return this.reloadPromise;
+    }
+
+    this.reloadPromise = (async () => {
+      const config = (await useConfig()).getConfig();
+      const { videoPaths = [], usePathIds = true } = config;
+      this.videoScanner = new VideoScanner({
+        cacheName: config.cacheName,
+        getInfo: config.getVideoInfo ?? true,
+      });
+      this.idMap = {};
+      this.videos = await this.scanVideoPaths(videoPaths, { useCache });
+      this.secureVideos = this.processPathSecurity(this.videos, usePathIds);
+      this.emit("updated");
+      return this.secureVideos;
+    })().finally(() => {
+      this.reloadPromise = null;
     });
-    this.videos = await this.scanVideoPaths(videoPaths);
-    this.secureVideos = this.processPathSecurity(this.videos, usePathIds);
-    this.emit("updated");
+
+    return this.reloadPromise;
   }
 
   async saveCache(results) {
@@ -87,15 +105,15 @@ class VideoLibrary extends EventEmitter {
     return null;
   }
 
-  async scanVideoPaths(videoPaths) {
+  async scanVideoPaths(videoPaths, { useCache = false } = {}) {
     // try to load cache
-    if (process.env.USE_CACHE) {
+    if (useCache) {
       logger.info(`Loading cache...`);
       const cache = await this.loadCache();
-      logger.info(
-        `Cache from ${moment(cache.time).format("YYYY-MM-DD HH:mm:ss")} loaded.`
-      );
-      if (cache) {
+      if (cache?.results) {
+        logger.info(
+          `Cache from ${moment(cache.time).format("YYYY-MM-DD HH:mm:ss")} loaded.`
+        );
         return cache.results;
       }
     }
@@ -169,6 +187,7 @@ export const useVideoLibrary = () => {
     getVideos: () => videoLibrary.getVideos(),
     getSecureVideos: () => videoLibrary.getSecureVideos(),
     getIdMap: () => videoLibrary.getIdMap(),
+    reloadVideos: (options) => videoLibrary.reloadVideos(options),
     onUpdate: (callback) => videoLibrary.on("updated", callback),
   };
 };
