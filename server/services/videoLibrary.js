@@ -13,6 +13,7 @@ class VideoLibrary extends EventEmitter {
     this.videos = [];
     this.secureVideos = [];
     this.idMap = {}; // used when `usePathIds` is true
+    this.infoMap = {};
     this.reloadPromise = null;
     this.init();
   }
@@ -36,6 +37,7 @@ class VideoLibrary extends EventEmitter {
         if (usePathIds && newObj.type === "file") {
           const id = crypto.randomUUID();
           this.idMap[id] = newObj.path;
+          this.infoMap[id] = newObj.info || null;
           newObj.id = id;
         }
         delete newObj.path;
@@ -68,6 +70,7 @@ class VideoLibrary extends EventEmitter {
         getInfo: config.getVideoInfo ?? true,
       });
       this.idMap = {};
+      this.infoMap = {};
       this.videos = await this.scanVideoPaths(videoPaths, { useCache });
       this.secureVideos = this.processPathSecurity(this.videos, usePathIds);
       this.emit("updated");
@@ -178,6 +181,10 @@ class VideoLibrary extends EventEmitter {
   getIdMap() {
     return this.idMap;
   }
+
+  getInfoMap() {
+    return this.infoMap;
+  }
 }
 
 const videoLibrary = new VideoLibrary();
@@ -187,6 +194,7 @@ export const useVideoLibrary = () => {
     getVideos: () => videoLibrary.getVideos(),
     getSecureVideos: () => videoLibrary.getSecureVideos(),
     getIdMap: () => videoLibrary.getIdMap(),
+    getInfoMap: () => videoLibrary.getInfoMap(),
     reloadVideos: (options) => videoLibrary.reloadVideos(options),
     onUpdate: (callback) => videoLibrary.on("updated", callback),
   };

@@ -1,6 +1,68 @@
 <template>
   <div class="video-player">
     <div ref="playerMountRef" class="player-mount"></div>
+    <div v-if="supportedCaptionTracks.length" class="caption-control" @click.stop>
+      <button
+        class="caption-control-button"
+        type="button"
+        title="字幕"
+        :aria-expanded="showCaptionMenu"
+        @click="showCaptionMenu = !showCaptionMenu"
+      >
+        CC
+      </button>
+      <div v-if="showCaptionMenu" class="caption-menu">
+        <label class="caption-toggle">
+          <input
+            type="checkbox"
+            :checked="captionSelection.enabled"
+            @change="setCaptionEnabled($event.target.checked)"
+          />
+          <span>字幕</span>
+        </label>
+        <label class="caption-field">
+          <span>主字幕</span>
+          <select
+            :value="captionSelection.primaryTrackId"
+            :disabled="!captionSelection.enabled"
+            @change="setCaptionPrimaryTrack($event.target.value)"
+          >
+            <option
+              v-for="track in supportedCaptionTracks"
+              :key="track.id"
+              :value="track.id"
+            >
+              {{ formatCaptionTrackLabel(track) }}
+            </option>
+          </select>
+        </label>
+        <label class="caption-toggle">
+          <input
+            type="checkbox"
+            :checked="captionSelection.combined"
+            :disabled="!captionSelection.enabled || supportedCaptionTracks.length < 2"
+            @change="setCaptionCombined($event.target.checked)"
+          />
+          <span>双字幕</span>
+        </label>
+        <label v-if="captionSelection.combined" class="caption-field">
+          <span>副字幕</span>
+          <select
+            :value="captionSelection.secondaryTrackId"
+            :disabled="!captionSelection.enabled"
+            @change="setCaptionSecondaryTrack($event.target.value)"
+          >
+            <option
+              v-for="track in secondaryCaptionTracks"
+              :key="track.id"
+              :value="track.id"
+            >
+              {{ formatCaptionTrackLabel(track) }}
+            </option>
+          </select>
+        </label>
+      </div>
+    </div>
     <div v-if="currentVideoInfo.externalAudioPreparing" class="audio-preparing">
       <span class="audio-preparing-spinner" aria-hidden="true"></span>
       <span>正在准备兼容音频</span>
@@ -33,14 +95,24 @@ export default {
     let externalAudioVideoElement = null
     let activeVideoUrl = ''
     let activeExternalAudioUrl = ''
+    let activeCaptionUrl = ''
     const playerMountRef = ref(null)
     const updateCount = ref(10)
+    const showCaptionMenu = ref(false)
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
     const buildHistoryKey = (vidKey) => Array.isArray(vidKey) ? vidKey.join(',') : String(vidKey || '')
 
-    const { currentVideoInfo } = useVideoLibrary()
+    const {
+      currentVideoInfo,
+      captionSelection,
+      supportedCaptionTracks,
+      setCaptionEnabled,
+      setCaptionPrimaryTrack,
+      setCaptionSecondaryTrack,
+      setCaptionCombined
+    } = useVideoLibrary()
     const audioPreparingProgressText = computed(() => {
       const progress = Number(currentVideoInfo.value.externalAudioProgress)
       if (!Number.isFinite(progress)) {
@@ -48,6 +120,19 @@ export default {
       }
       return `${Math.max(0, Math.min(100, Math.round(progress)))}%`
     })
+    const secondaryCaptionTracks = computed(() =>
+      supportedCaptionTracks.value.filter((track) => track.id !== captionSelection.value.primaryTrackId)
+    )
+    const formatCaptionTrackLabel = (track) => {
+      const parts = [track.label || track.language || track.id]
+      const detail = track.language && track.language !== 'und'
+        ? track.language
+        : track.codec || track.format || ''
+      if (detail && !parts.includes(detail)) {
+        parts.push(detail)
+      }
+      return parts.join(' · ')
+    }
 
     // Get the saved playback time
     const loadVideoTime = (videoUrl) => {
@@ -107,6 +192,7 @@ export default {
       window.__videoPlayer = null
       activeVideoUrl = ''
       activeExternalAudioUrl = ''
+      activeCaptionUrl = ''
 
       if (playerMountRef.value) {
         playerMountRef.value.replaceChildren()
@@ -302,6 +388,7 @@ export default {
         cleanupExternalAudio()
         activeVideoUrl = videoInfo.videoUrl
         activeExternalAudioUrl = ''
+        activeCaptionUrl = videoInfo.captionUrl || ''
         targetPlayer.once('canplay', () => handleReady(token, targetPlayer))
         targetPlayer.setSource(videoInfo)
         updateExternalAudioPreparingState(videoInfo, targetPlayer)
@@ -312,6 +399,10 @@ export default {
       }
 
       updateExternalAudioPreparingState(videoInfo, targetPlayer)
+      if ((videoInfo.captionUrl || '') !== activeCaptionUrl) {
+        activeCaptionUrl = videoInfo.captionUrl || ''
+        targetPlayer.setCaption?.(videoInfo)
+      }
       if (videoInfo.externalAudioUrl !== activeExternalAudioUrl) {
         if (videoInfo.externalAudioUrl) {
           setupExternalAudio(videoInfo, token, targetPlayer)
@@ -395,6 +486,7 @@ export default {
     }
 
     const handleWindowClick = () => {
+      showCaptionMenu.value = false
       setTimeout(focusVideo, 0)
     }
 
@@ -454,6 +546,10 @@ export default {
       await initPlayer()
     })
 
+    watch(() => currentVideoInfo.value.videoUrl, () => {
+      showCaptionMenu.value = false
+    })
+
     onUnmounted(() => {
       window.removeEventListener('click', handleWindowClick)
       destroyPlayer()
@@ -463,6 +559,15 @@ export default {
       playerMountRef,
       currentVideoInfo,
       audioPreparingProgressText,
+      captionSelection,
+      supportedCaptionTracks,
+      secondaryCaptionTracks,
+      showCaptionMenu,
+      formatCaptionTrackLabel,
+      setCaptionEnabled,
+      setCaptionPrimaryTrack,
+      setCaptionSecondaryTrack,
+      setCaptionCombined,
     }
   }
 }
@@ -503,6 +608,77 @@ export default {
 
 .dplayer-subtitle {
   text-shadow: 1px 1px 10px rgb(0, 0, 0) !important;
+}
+
+.caption-control {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 20;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.caption-control-button {
+  min-width: 42px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.68);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.caption-control-button:hover {
+  background-color: rgba(24, 24, 24, 0.82);
+}
+
+.caption-menu {
+  position: absolute;
+  left: 0;
+  top: 40px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.82);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+.caption-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.caption-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #ffffff;
+}
+
+.caption-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.caption-field select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background-color: rgba(20, 20, 20, 0.96);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  padding: 6px 8px;
 }
 
 .audio-preparing {

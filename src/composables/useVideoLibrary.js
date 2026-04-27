@@ -8,6 +8,7 @@ const DEFAULT_SORT_BY = "name";
 const DEFAULT_SORT_ORDER = "asc";
 const SORT_FIELDS = ["name", "duration", "size", "mtime"];
 const AUDIO_STATUS_POLL_INTERVAL_MS = 1000;
+const CAPTION_SELECTION_KEY = "video-caption-selection";
 
 export function useVideoLibrary() {
   if (instance) {
@@ -45,18 +46,136 @@ export function useVideoLibrary() {
     return `/video?id=${encodeURIComponent(currentVideoId.value)}`;
   });
 
-  const currentCaptionUrl = computed(() => {
-    if (!currentVideoId.value) return "";
-    return `/caption?id=${encodeURIComponent(currentVideoId.value)}`;
-  });
-
   const currentVideoContentType = computed(() => {
     const fileName = currentPath.value[currentPath.value.length - 1] || "";
     return getVideoContentType(fileName);
   });
 
+  const readCaptionSelection = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(CAPTION_SELECTION_KEY) || "{}");
+      return {
+        enabled: parsed.enabled !== false,
+        combined: Boolean(parsed.combined),
+        primaryTrackId: parsed.primaryTrackId || "",
+        secondaryTrackId: parsed.secondaryTrackId || "",
+      };
+    } catch {
+      return {
+        enabled: true,
+        combined: false,
+        primaryTrackId: "",
+        secondaryTrackId: "",
+      };
+    }
+  };
+
   const currentVideoInfo = ref({ captionExists: false });
+  const captionSelection = ref(readCaptionSelection());
   let videoInfoRequestId = 0;
+
+  const supportedCaptionTracks = computed(() =>
+    (currentVideoInfo.value.captionTracks || []).filter((track) => track.supported)
+  );
+
+  const saveCaptionSelection = () => {
+    localStorage.setItem(CAPTION_SELECTION_KEY, JSON.stringify(captionSelection.value));
+  };
+
+  const normalizeCaptionSelection = (tracks, defaultTrackId) => {
+    const supportedTracks = tracks.filter((track) => track.supported);
+    const supportedIds = new Set(supportedTracks.map((track) => track.id));
+    const firstTrackId = supportedTracks[0]?.id || "";
+    const primaryTrackId = supportedIds.has(captionSelection.value.primaryTrackId)
+      ? captionSelection.value.primaryTrackId
+      : defaultTrackId || firstTrackId;
+    const secondaryTrackId = supportedIds.has(captionSelection.value.secondaryTrackId)
+      && captionSelection.value.secondaryTrackId !== primaryTrackId
+      ? captionSelection.value.secondaryTrackId
+      : supportedTracks.find((track) => track.id !== primaryTrackId)?.id || "";
+
+    captionSelection.value = {
+      ...captionSelection.value,
+      primaryTrackId,
+      secondaryTrackId,
+      combined: Boolean(captionSelection.value.combined && primaryTrackId && secondaryTrackId),
+    };
+  };
+
+  const buildCaptionUrl = (videoId) => {
+    const tracks = supportedCaptionTracks.value;
+    if (!videoId || !captionSelection.value.enabled || tracks.length === 0) {
+      return "";
+    }
+
+    const params = new URLSearchParams({ id: videoId });
+    if (
+      captionSelection.value.combined &&
+      captionSelection.value.primaryTrackId &&
+      captionSelection.value.secondaryTrackId
+    ) {
+      params.set("mode", "combined");
+      params.set("primary", captionSelection.value.primaryTrackId);
+      params.set("secondary", captionSelection.value.secondaryTrackId);
+    } else if (captionSelection.value.primaryTrackId) {
+      params.set("track", captionSelection.value.primaryTrackId);
+    }
+
+    return `/caption?${params.toString()}`;
+  };
+
+  const applyCaptionInfo = () => {
+    const captionUrl = buildCaptionUrl(currentVideoId.value);
+    currentVideoInfo.value = {
+      ...currentVideoInfo.value,
+      captionExists: Boolean(captionUrl),
+      captionUrl,
+      captionSelection: captionSelection.value,
+    };
+  };
+
+  const setCaptionEnabled = (enabled) => {
+    captionSelection.value = {
+      ...captionSelection.value,
+      enabled,
+    };
+    saveCaptionSelection();
+    applyCaptionInfo();
+  };
+
+  const setCaptionPrimaryTrack = (trackId) => {
+    const tracks = supportedCaptionTracks.value;
+    const secondaryTrackId = captionSelection.value.secondaryTrackId === trackId
+      ? tracks.find((track) => track.id !== trackId)?.id || ""
+      : captionSelection.value.secondaryTrackId;
+    captionSelection.value = {
+      ...captionSelection.value,
+      primaryTrackId: trackId,
+      secondaryTrackId,
+      combined: Boolean(captionSelection.value.combined && secondaryTrackId),
+    };
+    saveCaptionSelection();
+    applyCaptionInfo();
+  };
+
+  const setCaptionSecondaryTrack = (trackId) => {
+    captionSelection.value = {
+      ...captionSelection.value,
+      secondaryTrackId: trackId,
+      combined: Boolean(captionSelection.value.combined && trackId),
+    };
+    saveCaptionSelection();
+    applyCaptionInfo();
+  };
+
+  const setCaptionCombined = (combined) => {
+    captionSelection.value = {
+      ...captionSelection.value,
+      combined: Boolean(combined && captionSelection.value.secondaryTrackId),
+    };
+    saveCaptionSelection();
+    applyCaptionInfo();
+  };
 
   const getCaptionStatus = async (videoId) => {
     const response = await fetch(`/caption/status?id=${encodeURIComponent(videoId)}`);
@@ -107,10 +226,10 @@ export function useVideoLibrary() {
         }
 
         currentVideoInfo.value = {
-          captionExists: captionStatus.exists,
           videoUrl: currentVideoUrl.value,
           contentType: currentVideoContentType.value,
-          captionUrl: captionStatus.exists ? currentCaptionUrl.value : "",
+          captionTracks: captionStatus.tracks || [],
+          captionDefaultTrackId: captionStatus.defaultTrackId || "",
           externalAudioUrl: "",
           externalAudioPreparing: audioNeeded,
           externalAudioProgress: null,
@@ -118,6 +237,11 @@ export function useVideoLibrary() {
           mediaInfo: currentVideoItem.value?.info || null,
           path: currentPath.value,
         };
+        normalizeCaptionSelection(
+          currentVideoInfo.value.captionTracks,
+          currentVideoInfo.value.captionDefaultTrackId
+        );
+        applyCaptionInfo();
 
         if (!audioNeeded) {
           return;
@@ -407,6 +531,12 @@ export function useVideoLibrary() {
     flatVideoList,
     sortBy,
     sortOrder,
+    captionSelection,
+    supportedCaptionTracks,
+    setCaptionEnabled,
+    setCaptionPrimaryTrack,
+    setCaptionSecondaryTrack,
+    setCaptionCombined,
     setSortBy,
     toggleSortOrder,
     fetchVideos,

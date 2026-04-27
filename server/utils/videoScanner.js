@@ -8,6 +8,9 @@ import {
   createInfoProgressBar,
   mockProgressBar,
 } from "./progressBar.js";
+import { buildEmbeddedCaptionTracks } from "../../shared/captionTracks.js";
+
+const VIDEO_INFO_CACHE_VERSION = "v2";
 
 export class VideoScanner {
   // options: { cacheName: string, getInfo: boolean }
@@ -49,7 +52,7 @@ export class VideoScanner {
       return null;
     }
     const stats = fs.statSync(filePath);
-    const cacheKey = `${filePath}:${stats.mtime.getTime()}`;
+    const cacheKey = `${filePath}:${stats.mtime.getTime()}:${VIDEO_INFO_CACHE_VERSION}`;
 
     // Check if the info is cached
     const info = this.cache.get(cacheKey);
@@ -107,6 +110,7 @@ export class VideoScanner {
                 bitRate: audioStream.bit_rate ? Number(audioStream.bit_rate) : null,
               }
             : null,
+          subtitles: buildEmbeddedCaptionTracks(metadata.streams || []),
         };
 
         // Save to cache

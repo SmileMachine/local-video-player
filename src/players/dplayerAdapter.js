@@ -21,15 +21,23 @@ export default class DPlayerAdapter {
   }
 
   setSource(videoInfo) {
-    // Only set caption URL if captions exist
-    if (videoInfo.captionExists) {
-      this.player.template.subtrack.src = videoInfo.captionUrl;
-    } else {
-      this.player.template.subtrack.src = "";
-    }
+    this.setCaption(videoInfo);
     this.player.switchVideo({
       url: videoInfo.videoUrl,
     });
+  }
+
+  setCaption(videoInfo) {
+    const url = videoInfo.captionExists ? videoInfo.captionUrl : "";
+    this.player.template.subtrack.src = url;
+
+    if (url) {
+      this.player.template.subtrack.setAttribute("default", "");
+      this.player.subtitle?.show?.();
+    } else {
+      this.player.template.subtrack.removeAttribute("default");
+      this.player.subtitle?.hide?.();
+    }
   }
 
   play() {

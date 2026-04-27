@@ -1,90 +1,75 @@
 import express from "express";
-import path from "path";
 import fs from "fs";
-import { promisify } from "util";
-import srt2vtt from "srt-to-vtt";
-import { pipeline } from "stream/promises";
 import { useVideoLibrary } from "../services/videoLibrary.js";
+import {
+  getCaptionTrackFile,
+  getCaptionTracks,
+  getCombinedCaptionFile,
+} from "../services/captionCache.js";
 import { logger } from "../utils/logger.js";
 
 const router = express.Router();
 const videoLibrary = useVideoLibrary();
 
-function getBasePath(videoPath) {
-  return videoPath.split('.').slice(0, -1).join('.'); // 移除 .mp4 后缀
-}
+const resolveVideoRequest = (id) => {
+  const decodedId = decodeURIComponent(id || "");
+  return {
+    videoPath: videoLibrary.getIdMap()[decodedId],
+    mediaInfo: videoLibrary.getInfoMap()[decodedId] || null,
+  };
+};
 
-// 检查字幕状态的API
+const sendVttFile = (res, filePath) => {
+  res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  fs.createReadStream(filePath).pipe(res);
+};
+
 router.get("/status", async (req, res) => {
   try {
-    const videoPath = videoLibrary.getIdMap()[decodeURIComponent(req.query.id)];
-    if (!videoPath) {
-      return res.json({ exists: false, message: "Video not found" });
+    const { videoPath, mediaInfo } = resolveVideoRequest(req.query.id);
+    if (!videoPath || !fs.existsSync(videoPath)) {
+      return res.json({
+        exists: false,
+        tracks: [],
+        defaultTrackId: "",
+        message: "Video not found",
+      });
     }
 
-    const basePath = getBasePath(videoPath);
-    const vttPath = basePath + ".vtt";
-    const srtPath = basePath + ".srt";
-
-    if (fs.existsSync(vttPath)) {
-      return res.json({ exists: true, format: "vtt" });
-    }
-
-    if (fs.existsSync(srtPath)) {
-      return res.json({ exists: true, format: "srt" });
-    }
-
-    return res.json({ exists: false, message: "No subtitles found" });
+    res.json(await getCaptionTracks(videoPath, mediaInfo));
   } catch (error) {
     logger.error("Error checking caption status:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// 获取字幕内容的API
 router.get("/", async (req, res) => {
   try {
-    logger.debug(`req.query.id: ${req.query.id}`);
-    const videoPath = videoLibrary.getIdMap()[decodeURIComponent(req.query.id)];
-    if (!videoPath) {
+    const { videoPath, mediaInfo } = resolveVideoRequest(req.query.id);
+    if (!videoPath || !fs.existsSync(videoPath)) {
       return res.status(404).send("Caption not found");
     }
 
-    const basePath = getBasePath(videoPath);
-    const vttPath = basePath + ".vtt";
-    const srtPath = basePath + ".srt";
+    const mode = String(req.query.mode || "single").toLowerCase();
+    const filePath = mode === "combined"
+      ? await getCombinedCaptionFile(
+          videoPath,
+          String(req.query.primary || ""),
+          String(req.query.secondary || ""),
+          mediaInfo
+        )
+      : await getCaptionTrackFile(videoPath, String(req.query.track || ""), mediaInfo);
 
-    // 如果VTT存在，直接返回
-    if (fs.existsSync(vttPath)) {
-      res.setHeader("Content-Type", "text/vtt");
-      return fs.createReadStream(vttPath).pipe(res);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).send("No subtitles found");
     }
 
-    // 如果SRT存在，转换后返回
-    if (fs.existsSync(srtPath)) {
-      res.setHeader("Content-Type", "text/vtt");
-      
-      // 实时转换并返回
-      const srtStream = fs.createReadStream(srtPath);
-      const vttConverter = srt2vtt();
-      
-      try {
-        await pipeline(srtStream, vttConverter, res);
-      } catch (error) {
-        logger.error("Error converting srt to vtt:", error);
-        if (!res.headersSent) {
-          res.status(500).send("Error converting subtitles");
-        }
-      }
-      return;
-    }
-
-    // 没有找到字幕文件
-    res.status(404).send("No subtitles found");
+    sendVttFile(res, filePath);
   } catch (error) {
     logger.error("Error serving caption:", error);
     if (!res.headersSent) {
-      res.status(500).send("Internal server error");
+      res.status(error.statusCode || 500).send(error.message || "Internal server error");
     }
   }
 });

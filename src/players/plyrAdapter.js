@@ -16,7 +16,7 @@ export default class PlyrAdapter {
         "fullscreen",
       ],
       settings: ["captions", "speed"],
-      captions: { active: true, language: "zh", update: false },
+      captions: { active: true, language: "zh", update: true },
       keyboard: { global: true },
       seekTime: 5,
       listeners: { dblclick: false },
@@ -41,17 +41,51 @@ export default class PlyrAdapter {
         },
       ],
       tracks: videoInfo.captionExists
-        ? [
-            {
-              kind: "captions",
-              label: "中文",
-              srclang: "zh",
-              src: videoInfo.captionUrl,
-              default: true,
-            },
-          ]
+        ? [this.createCaptionTrack(videoInfo)]
         : [],
     };
+  }
+
+  createCaptionTrack(videoInfo) {
+    return {
+      kind: "captions",
+      label: videoInfo.captionLabel || "字幕",
+      srclang: "zh",
+      src: videoInfo.captionUrl,
+      default: true,
+    };
+  }
+
+  setCaption(videoInfo) {
+    const media = this.player.media;
+    if (!media) {
+      return;
+    }
+
+    media.querySelectorAll("track[kind='captions'], track[kind='subtitles']").forEach((track) => {
+      track.remove();
+    });
+
+    if (!videoInfo.captionExists || !videoInfo.captionUrl) {
+      this.player.toggleCaptions(false);
+      return;
+    }
+
+    const track = document.createElement("track");
+    track.kind = "captions";
+    track.label = videoInfo.captionLabel || "字幕";
+    track.srclang = "zh";
+    track.src = videoInfo.captionUrl;
+    track.default = true;
+    media.appendChild(track);
+
+    const activateCaptionTrack = () => {
+      this.player.currentTrack = Math.max(0, media.textTracks.length - 1);
+      this.player.toggleCaptions(true);
+    };
+
+    track.addEventListener("load", activateCaptionTrack, { once: true });
+    window.setTimeout(activateCaptionTrack, 0);
   }
 
   play() {
