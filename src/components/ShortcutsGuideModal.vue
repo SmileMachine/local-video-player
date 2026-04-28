@@ -25,6 +25,10 @@
               <span>开启/关闭字幕</span>
             </div>
             <div class="shortcut-item">
+              <kbd>D</kbd>
+              <span>开启/关闭弹幕</span>
+            </div>
+            <div class="shortcut-item">
               <kbd>Space</kbd>
               <span>播放/暂停</span>
             </div>

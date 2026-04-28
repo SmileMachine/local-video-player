@@ -61,6 +61,19 @@
       :style="danmakuMenuStyle"
       @click.stop
     >
+      <div class="caption-field danmaku-toggle-field">
+        <span class="caption-field-heading">弹幕开关</span>
+        <button
+          class="danmaku-switch"
+          type="button"
+          role="switch"
+          :aria-checked="danmakuEnabled"
+          :class="{ 'danmaku-switch-on': danmakuEnabled }"
+          @click="setDanmakuEnabled(!danmakuEnabled)"
+        >
+          <span class="danmaku-switch-thumb" aria-hidden="true"></span>
+        </button>
+      </div>
       <div class="caption-field">
         <label class="caption-field-heading" for="danmaku-speed-input">
           <span>弹幕速度</span>
@@ -78,28 +91,34 @@
         />
       </div>
       <div class="caption-field">
-        <label class="caption-field-heading" for="danmaku-shadow-select">弹幕阴影</label>
-        <select
-          id="danmaku-shadow-select"
-          :value="danmakuShadow"
-          @change="setDanmakuShadow($event.target.value)"
-        >
-          <option value="off">关闭</option>
-          <option value="soft">弱</option>
-          <option value="strong">强</option>
-        </select>
+        <span class="caption-field-heading">弹幕阴影</span>
+        <div class="danmaku-segmented-control" role="group" aria-label="弹幕阴影">
+          <button
+            v-for="option in danmakuShadowOptions"
+            :key="option.value"
+            class="danmaku-segmented-button"
+            type="button"
+            :class="{ 'danmaku-segmented-button-active': danmakuShadow === option.value }"
+            @click="setDanmakuShadow(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
       </div>
       <div class="caption-field">
-        <label class="caption-field-heading" for="danmaku-weight-select">弹幕字重</label>
-        <select
-          id="danmaku-weight-select"
-          :value="danmakuWeight"
-          @change="setDanmakuWeight($event.target.value)"
-        >
-          <option value="normal">普通</option>
-          <option value="medium">中等</option>
-          <option value="bold">加粗</option>
-        </select>
+        <span class="caption-field-heading">弹幕字重</span>
+        <div class="danmaku-segmented-control" role="group" aria-label="弹幕字重">
+          <button
+            v-for="option in danmakuWeightOptions"
+            :key="option.value"
+            class="danmaku-segmented-button"
+            type="button"
+            :class="{ 'danmaku-segmented-button-active': danmakuWeight === option.value }"
+            @click="setDanmakuWeight(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
       </div>
       <form class="caption-field" @submit.prevent="submitDanmakuImport">
         <label class="caption-field-heading" for="danmaku-bvid-input">B站弹幕</label>
@@ -180,10 +199,21 @@ export default {
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
     const DANMAKU_SPEED_KEY = 'video-danmaku-speed'
+    const DANMAKU_ENABLED_KEY = 'video-danmaku-enabled'
     const DANMAKU_SHADOW_KEY = 'video-danmaku-shadow'
     const DANMAKU_WEIGHT_KEY = 'video-danmaku-weight'
     const DANMAKU_SHADOW_VALUES = new Set(['off', 'soft', 'strong'])
     const DANMAKU_WEIGHT_VALUES = new Set(['normal', 'medium', 'bold'])
+    const danmakuShadowOptions = [
+      { value: 'off', label: '关闭' },
+      { value: 'soft', label: '柔和' },
+      { value: 'strong', label: '强' }
+    ]
+    const danmakuWeightOptions = [
+      { value: 'normal', label: '常规' },
+      { value: 'medium', label: '中等' },
+      { value: 'bold', label: '加粗' }
+    ]
     const MIN_DANMAKU_SPEED = 0.1
     const MAX_DANMAKU_SPEED = 1
     const buildHistoryKey = (vidKey) => Array.isArray(vidKey) ? vidKey.join(',') : String(vidKey || '')
@@ -195,11 +225,13 @@ export default {
       return Math.max(MIN_DANMAKU_SPEED, Math.min(MAX_DANMAKU_SPEED, Math.round(speed * 10) / 10))
     }
     const readDanmakuSpeed = () => normalizeDanmakuSpeed(localStorage.getItem(DANMAKU_SPEED_KEY))
+    const readDanmakuEnabled = () => localStorage.getItem(DANMAKU_ENABLED_KEY) !== 'false'
     const normalizeDanmakuShadow = (value) => DANMAKU_SHADOW_VALUES.has(value) ? value : 'soft'
     const readDanmakuShadow = () => normalizeDanmakuShadow(localStorage.getItem(DANMAKU_SHADOW_KEY))
     const normalizeDanmakuWeight = (value) => DANMAKU_WEIGHT_VALUES.has(value) ? value : 'medium'
     const readDanmakuWeight = () => normalizeDanmakuWeight(localStorage.getItem(DANMAKU_WEIGHT_KEY))
     const danmakuSpeed = ref(readDanmakuSpeed())
+    const danmakuEnabled = ref(readDanmakuEnabled())
     const danmakuShadow = ref(readDanmakuShadow())
     const danmakuWeight = ref(readDanmakuWeight())
 
@@ -360,6 +392,31 @@ export default {
       }
     }
 
+    const isEditableShortcutTarget = (target) => {
+      if (!target) {
+        return false
+      }
+
+      const tagName = String(target.tagName || '').toLowerCase()
+      return (
+        ['input', 'textarea', 'select'].includes(tagName) ||
+        target.isContentEditable ||
+        Boolean(target.closest?.("[contenteditable='true']"))
+      )
+    }
+
+    const handleDanmakuShortcut = (event) => {
+      if ((event.key !== 'd' && event.key !== 'D') || isEditableShortcutTarget(event.target)) {
+        return
+      }
+      if (!canImportDanmaku.value) {
+        return
+      }
+
+      event.preventDefault()
+      setDanmakuEnabled(!danmakuEnabled.value)
+    }
+
     const closeMediaMenus = () => {
       showCaptionMenu.value = false
       showDanmakuMenu.value = false
@@ -385,6 +442,13 @@ export default {
       danmakuSpeed.value = nextSpeed
       localStorage.setItem(DANMAKU_SPEED_KEY, String(nextSpeed))
       player?.setDanmakuSpeed?.(nextSpeed)
+    }
+
+    const setDanmakuEnabled = (value) => {
+      const nextEnabled = Boolean(value)
+      danmakuEnabled.value = nextEnabled
+      localStorage.setItem(DANMAKU_ENABLED_KEY, String(nextEnabled))
+      player?.setDanmakuVisible?.(nextEnabled)
     }
 
     const applyDanmakuStyle = () => {
@@ -790,6 +854,7 @@ export default {
 
       player = nextPlayer
       nextPlayer.setDanmakuSpeed?.(danmakuSpeed.value)
+      nextPlayer.setDanmakuVisible?.(danmakuEnabled.value)
       applyDanmakuStyle()
 
       // Expose player instance for keyboard shortcuts
@@ -803,6 +868,7 @@ export default {
     onMounted(async () => {
       await initPlayer()
       window.addEventListener('click', closeMediaMenusAndFocus)
+      window.addEventListener('keydown', handleDanmakuShortcut)
       playerMountRef.value?.addEventListener('click', handleMenuTriggerEvent, true)
       playerMountRef.value?.addEventListener('keydown', handleMenuTriggerKeydown, true)
     })
@@ -873,6 +939,7 @@ export default {
 
     onUnmounted(() => {
       window.removeEventListener('click', closeMediaMenusAndFocus)
+      window.removeEventListener('keydown', handleDanmakuShortcut)
       playerMountRef.value?.removeEventListener('click', handleMenuTriggerEvent, true)
       playerMountRef.value?.removeEventListener('keydown', handleMenuTriggerKeydown, true)
       destroyPlayer()
@@ -897,6 +964,9 @@ export default {
       danmakuBvid,
       danmakuSpeed,
       danmakuSpeedText,
+      danmakuEnabled,
+      danmakuShadowOptions,
+      danmakuWeightOptions,
       danmakuShadow,
       danmakuWeight,
       danmakuImporting,
@@ -904,6 +974,7 @@ export default {
       danmakuImportError,
       formatCaptionTrackLabel,
       setDanmakuSpeed,
+      setDanmakuEnabled,
       setDanmakuShadow,
       setDanmakuWeight,
       submitDanmakuImport,
@@ -1054,6 +1125,95 @@ export default {
 .danmaku-speed-slider {
   width: 100%;
   accent-color: #ffffff;
+}
+
+.danmaku-toggle-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.danmaku-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+  appearance: none;
+  outline: none;
+}
+
+.danmaku-switch:focus,
+.danmaku-switch:focus-visible,
+.danmaku-switch:active {
+  border: 0;
+  outline: none;
+}
+
+.danmaku-switch-on {
+  background-color: #34c759;
+}
+
+.danmaku-switch-thumb {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.36);
+  transition: transform 160ms ease;
+}
+
+.danmaku-switch-on .danmaku-switch-thumb {
+  transform: translateX(16px);
+}
+
+.danmaku-segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
+  border-radius: 7px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.danmaku-segmented-button {
+  min-width: 0;
+  min-height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.danmaku-segmented-button:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.danmaku-segmented-button:focus,
+.danmaku-segmented-button:focus-visible,
+.danmaku-segmented-button:active {
+  border: 0;
+  outline: none;
+}
+
+.danmaku-segmented-button-active {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.danmaku-segmented-button-active:hover {
+  background-color: #ffffff;
+  color: rgba(0, 0, 0, 0.92);
 }
 
 .danmaku-import-row {

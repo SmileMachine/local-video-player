@@ -92,6 +92,20 @@ export default class DPlayerAdapter {
     this.player.danmaku?.speed?.(nextSpeedRate);
   }
 
+  setDanmakuVisible(visible) {
+    const danmaku = this.player.danmaku;
+    if (!danmaku) {
+      return;
+    }
+
+    if (visible) {
+      danmaku.show();
+      this.scheduleDanmakuBackfill();
+    } else {
+      danmaku.hide();
+    }
+  }
+
   scheduleDanmakuBackfill() {
     const schedule = globalThis.requestAnimationFrame || globalThis.setTimeout;
     const cancel = globalThis.cancelAnimationFrame || globalThis.clearTimeout;
