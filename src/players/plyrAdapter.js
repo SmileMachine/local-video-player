@@ -1,5 +1,7 @@
 import Plyr from "plyr";
 
+const EMPTY_CAPTION_URL = "data:text/vtt;charset=utf-8,WEBVTT%0A%0A";
+
 export default class PlyrAdapter {
   constructor(options) {
     this.externalAudio = null;
@@ -15,7 +17,7 @@ export default class PlyrAdapter {
         "volume",
         "fullscreen",
       ],
-      settings: ["captions", "speed"],
+      settings: ["speed"],
       captions: { active: true, language: "zh", update: true },
       keyboard: { global: true },
       seekTime: 5,
@@ -32,6 +34,7 @@ export default class PlyrAdapter {
   }
 
   setSource(videoInfo) {
+    const captionTrack = this.createCaptionTrack(videoInfo);
     this.player.source = {
       type: "video",
       sources: [
@@ -40,19 +43,25 @@ export default class PlyrAdapter {
           type: videoInfo.contentType || "application/octet-stream",
         },
       ],
-      tracks: videoInfo.captionExists
-        ? [this.createCaptionTrack(videoInfo)]
-        : [],
+      tracks: captionTrack ? [captionTrack] : [],
     };
+    window.setTimeout(() => {
+      this.player.toggleCaptions(Boolean(videoInfo.captionExists));
+    }, 0);
   }
 
   createCaptionTrack(videoInfo) {
+    const hasCaptionTracks = (videoInfo.captionTracks || []).some((track) => track.supported);
+    if (!videoInfo.captionExists && !hasCaptionTracks) {
+      return null;
+    }
+
     return {
       kind: "captions",
       label: videoInfo.captionLabel || "字幕",
       srclang: "zh",
-      src: videoInfo.captionUrl,
-      default: true,
+      src: videoInfo.captionExists ? videoInfo.captionUrl : EMPTY_CAPTION_URL,
+      default: Boolean(videoInfo.captionExists),
     };
   }
 
@@ -66,18 +75,24 @@ export default class PlyrAdapter {
       track.remove();
     });
 
-    if (!videoInfo.captionExists || !videoInfo.captionUrl) {
+    const captionTrack = this.createCaptionTrack(videoInfo);
+    if (!captionTrack) {
       this.player.toggleCaptions(false);
       return;
     }
 
     const track = document.createElement("track");
-    track.kind = "captions";
-    track.label = videoInfo.captionLabel || "字幕";
-    track.srclang = "zh";
-    track.src = videoInfo.captionUrl;
-    track.default = true;
+    track.kind = captionTrack.kind;
+    track.label = captionTrack.label;
+    track.srclang = captionTrack.srclang;
+    track.src = captionTrack.src;
+    track.default = captionTrack.default;
     media.appendChild(track);
+
+    if (!videoInfo.captionExists) {
+      this.player.toggleCaptions(false);
+      return;
+    }
 
     const activateCaptionTrack = () => {
       this.player.currentTrack = Math.max(0, media.textTracks.length - 1);

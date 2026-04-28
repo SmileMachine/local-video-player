@@ -480,8 +480,25 @@ export function useVideoLibrary() {
     }
   };
 
+  const isEditableTarget = (target) => {
+    if (!target) {
+      return false;
+    }
+
+    const tagName = String(target.tagName || "").toLowerCase();
+    return (
+      ["input", "textarea", "select"].includes(tagName) ||
+      target.isContentEditable ||
+      Boolean(target.closest?.("[contenteditable='true']"))
+    );
+  };
+
   // 键盘事件处理
   const handleKeydown = (e) => {
+    if (isEditableTarget(e.target)) {
+      return;
+    }
+
     const currentIndex = getCurrentIndex();
     // console.log(e.key);
     // console.log(currentIndex);
@@ -506,6 +523,14 @@ export function useVideoLibrary() {
     else if (e.key === "h" || e.key === "H") {
       e.preventDefault();
       showShortcutsModal.value = !showShortcutsModal.value;
+    }
+    // C key - Toggle captions
+    else if (e.key === "c" || e.key === "C") {
+      if (!supportedCaptionTracks.value.length) {
+        return;
+      }
+      e.preventDefault();
+      setCaptionEnabled(!captionSelection.value.enabled);
     }
     // PageDown - Next video
     else if (e.key === "PageDown") {

@@ -1,5 +1,7 @@
 import DPlayer from "dplayer";
 
+const EMPTY_CAPTION_URL = "data:text/vtt;charset=utf-8,WEBVTT%0A%0A";
+
 export default class DPlayerAdapter {
   constructor(options) {
     this.externalAudio = null;
@@ -28,10 +30,11 @@ export default class DPlayerAdapter {
   }
 
   setCaption(videoInfo) {
-    const url = videoInfo.captionExists ? videoInfo.captionUrl : "";
+    const hasCaptionTracks = (videoInfo.captionTracks || []).some((track) => track.supported);
+    const url = videoInfo.captionExists ? videoInfo.captionUrl : hasCaptionTracks ? EMPTY_CAPTION_URL : "";
     this.player.template.subtrack.src = url;
 
-    if (url) {
+    if (videoInfo.captionExists) {
       this.player.template.subtrack.setAttribute("default", "");
       this.player.subtitle?.show?.();
     } else {

@@ -21,6 +21,10 @@
               <span>显示/隐藏快捷键指南</span>
             </div>
             <div class="shortcut-item">
+              <kbd>C</kbd>
+              <span>开启/关闭字幕</span>
+            </div>
+            <div class="shortcut-item">
               <kbd>Space</kbd>
               <span>播放/暂停</span>
             </div>

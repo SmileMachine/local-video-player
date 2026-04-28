@@ -1,18 +1,14 @@
 <template>
   <div class="video-player">
     <div ref="playerMountRef" class="player-mount"></div>
-    <div v-if="supportedCaptionTracks.length" class="caption-control" @click.stop>
-      <button
-        class="caption-control-button"
-        type="button"
-        title="字幕"
-        :aria-expanded="showCaptionMenu"
-        @click="showCaptionMenu = !showCaptionMenu"
-      >
-        <i class="fa-solid fa-closed-captioning" aria-hidden="true"></i>
-      </button>
-      <div v-if="showCaptionMenu" class="caption-menu">
-        <label class="caption-toggle">
+    <div
+      v-if="supportedCaptionTracks.length && showCaptionMenu"
+      class="caption-menu"
+      :style="captionMenuStyle"
+      @click.stop
+    >
+      <div class="caption-field">
+        <label class="caption-field-heading">
           <input
             type="checkbox"
             :checked="captionSelection.enabled"
@@ -20,47 +16,43 @@
           />
           <span>字幕</span>
         </label>
-        <label class="caption-field">
-          <span>主字幕</span>
-          <select
-            :value="captionSelection.primaryTrackId"
-            :disabled="!captionSelection.enabled"
-            @change="setCaptionPrimaryTrack($event.target.value)"
+        <select
+          :value="captionSelection.primaryTrackId"
+          :disabled="!captionSelection.enabled"
+          @change="setCaptionPrimaryTrack($event.target.value)"
+        >
+          <option
+            v-for="track in supportedCaptionTracks"
+            :key="track.id"
+            :value="track.id"
           >
-            <option
-              v-for="track in supportedCaptionTracks"
-              :key="track.id"
-              :value="track.id"
-            >
-              {{ formatCaptionTrackLabel(track) }}
-            </option>
-          </select>
-        </label>
-        <label class="caption-toggle">
+            {{ formatCaptionTrackLabel(track) }}
+          </option>
+        </select>
+      </div>
+      <div v-if="supportedCaptionTracks.length > 1" class="caption-field">
+        <label class="caption-field-heading">
           <input
             type="checkbox"
             :checked="captionSelection.combined"
             :disabled="!captionSelection.enabled || supportedCaptionTracks.length < 2"
             @change="setCaptionCombined($event.target.checked)"
           />
-          <span>双字幕</span>
+          <span>第二字幕</span>
         </label>
-        <label v-if="captionSelection.combined" class="caption-field">
-          <span>副字幕</span>
-          <select
-            :value="captionSelection.secondaryTrackId"
-            :disabled="!captionSelection.enabled"
-            @change="setCaptionSecondaryTrack($event.target.value)"
+        <select
+          :value="captionSelection.secondaryTrackId"
+          :disabled="!captionSelection.enabled || !captionSelection.combined"
+          @change="setCaptionSecondaryTrack($event.target.value)"
+        >
+          <option
+            v-for="track in secondaryCaptionTracks"
+            :key="track.id"
+            :value="track.id"
           >
-            <option
-              v-for="track in secondaryCaptionTracks"
-              :key="track.id"
-              :value="track.id"
-            >
-              {{ formatCaptionTrackLabel(track) }}
-            </option>
-          </select>
-        </label>
+            {{ formatCaptionTrackLabel(track) }}
+          </option>
+        </select>
       </div>
     </div>
     <div v-if="currentVideoInfo.externalAudioPreparing" class="audio-preparing">
@@ -99,6 +91,7 @@ export default {
     const playerMountRef = ref(null)
     const updateCount = ref(10)
     const showCaptionMenu = ref(false)
+    const captionMenuStyle = ref({ right: '16px', bottom: '64px' })
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
@@ -132,6 +125,65 @@ export default {
         parts.push(detail)
       }
       return parts.join(' · ')
+    }
+
+    const captionTriggerSelector = [
+      '[data-plyr="captions"]',
+      '.dplayer-subtitle-btn',
+      '.dplayer-subtitle-icon',
+      '.dplayer-subtitles-icon'
+    ].join(', ')
+
+    const openCaptionMenu = (trigger) => {
+      if (!supportedCaptionTracks.value.length) {
+        return
+      }
+
+      const playerRect = playerMountRef.value?.getBoundingClientRect()
+      const triggerRect = trigger?.getBoundingClientRect?.()
+      if (!playerRect || !triggerRect) {
+        captionMenuStyle.value = { right: '16px', bottom: '64px' }
+        showCaptionMenu.value = true
+        return
+      }
+
+      const menuWidth = 240
+      const margin = 8
+      const centerX = triggerRect.left - playerRect.left + triggerRect.width / 2
+      const left = Math.max(
+        margin,
+        Math.min(centerX - menuWidth / 2, playerRect.width - menuWidth - margin)
+      )
+      const bottom = Math.max(margin, playerRect.bottom - triggerRect.top + margin)
+
+      captionMenuStyle.value = {
+        left: `${left}px`,
+        bottom: `${bottom}px`
+      }
+      showCaptionMenu.value = true
+    }
+
+    const handleCaptionTriggerEvent = (event) => {
+      const trigger = event.target?.closest?.(captionTriggerSelector)
+      if (!trigger || !playerMountRef.value?.contains(trigger)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      event.stopImmediatePropagation?.()
+      if (showCaptionMenu.value) {
+        showCaptionMenu.value = false
+        return
+      }
+      openCaptionMenu(trigger)
+    }
+
+    const handleCaptionTriggerKeydown = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return
+      }
+      handleCaptionTriggerEvent(event)
     }
 
     // Get the saved playback time
@@ -493,6 +545,8 @@ export default {
     onMounted(async () => {
       await initPlayer()
       window.addEventListener('click', handleWindowClick)
+      playerMountRef.value?.addEventListener('click', handleCaptionTriggerEvent, true)
+      playerMountRef.value?.addEventListener('keydown', handleCaptionTriggerKeydown, true)
     })
 
     const handleReady = (token, readyPlayer) => {
@@ -552,6 +606,8 @@ export default {
 
     onUnmounted(() => {
       window.removeEventListener('click', handleWindowClick)
+      playerMountRef.value?.removeEventListener('click', handleCaptionTriggerEvent, true)
+      playerMountRef.value?.removeEventListener('keydown', handleCaptionTriggerKeydown, true)
       destroyPlayer()
     })
 
@@ -563,6 +619,7 @@ export default {
       supportedCaptionTracks,
       secondaryCaptionTracks,
       showCaptionMenu,
+      captionMenuStyle,
       formatCaptionTrackLabel,
       setCaptionEnabled,
       setCaptionPrimaryTrack,
@@ -610,54 +667,15 @@ export default {
   text-shadow: 1px 1px 10px rgb(0, 0, 0) !important;
 }
 
-.caption-control {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  z-index: 20;
-  color: rgba(255, 255, 255, 0.92);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.16s ease;
-}
-
-.video-player:hover .caption-control,
-.caption-control:focus-within,
-.caption-control:has(.caption-menu) {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.caption-control-button {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 6px;
-  background-color: rgba(0, 0, 0, 0.68);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.caption-control-button:hover {
-  background-color: rgba(24, 24, 24, 0.82);
-}
-
-.caption-control-button:focus,
-.caption-control-button:active {
-  border: 0;
-  outline: none;
-  box-shadow: none;
+.video-player .dplayer-subtitles {
+  display: none !important;
 }
 
 .caption-menu {
   position: absolute;
-  right: 0;
-  top: 40px;
   width: 240px;
+  max-width: calc(100% - 16px);
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -665,17 +683,19 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 6px;
   background-color: rgba(0, 0, 0, 0.82);
+  color: rgba(255, 255, 255, 0.92);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
 }
 
-.caption-toggle {
+.caption-field-heading {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.caption-toggle input {
+.caption-field-heading input {
   width: 16px;
   height: 16px;
   accent-color: #ffffff;
