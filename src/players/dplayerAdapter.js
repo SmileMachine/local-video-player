@@ -1,12 +1,37 @@
 import DPlayer from "dplayer";
+import {
+  assignDanmakuBackfillLanes,
+  collectVisibleDanmakuBeforeTime,
+  normalizeDanmakuType,
+} from "./danmakuBackfill.js";
 
 const EMPTY_CAPTION_URL = "data:text/vtt;charset=utf-8,WEBVTT%0A%0A";
 const DANMAKU_API = "/danmaku/";
+const MIN_BACKFILL_REMAINING_SECONDS = 0.05;
+const DEFAULT_DANMAKU_ROW_HEIGHT = 30;
+
+const numberToColor = (value) => {
+  const color = Number(value);
+  const safeColor = Number.isFinite(color) ? Math.max(0, Math.min(16777215, Math.round(color))) : 16777215;
+  return `#${(`00000${safeColor.toString(16)}`).slice(-6)}`;
+};
+
+const danmakuTypeName = (type) => {
+  const normalizedType = normalizeDanmakuType(type);
+  if (normalizedType === 1) {
+    return "top";
+  }
+  if (normalizedType === 2) {
+    return "bottom";
+  }
+  return "right";
+};
 
 export default class DPlayerAdapter {
   constructor(options) {
     this.externalAudio = null;
     this.danmakuSpeedRate = 1;
+    this.danmakuBackfillFrame = null;
     this.player = new DPlayer({
       container: options.container,
       screenshot: true,
@@ -29,6 +54,10 @@ export default class DPlayerAdapter {
 
     this.player.on("ended", () => {
       options.onEnded?.();
+    });
+
+    this.player.on("seeked", () => {
+      this.scheduleDanmakuBackfill();
     });
   }
 
@@ -61,6 +90,116 @@ export default class DPlayerAdapter {
 
     this.danmakuSpeedRate = nextSpeedRate;
     this.player.danmaku?.speed?.(nextSpeedRate);
+  }
+
+  scheduleDanmakuBackfill() {
+    const schedule = globalThis.requestAnimationFrame || globalThis.setTimeout;
+    const cancel = globalThis.cancelAnimationFrame || globalThis.clearTimeout;
+
+    if (this.danmakuBackfillFrame) {
+      cancel(this.danmakuBackfillFrame);
+    }
+
+    this.danmakuBackfillFrame = schedule(() => {
+      this.danmakuBackfillFrame = null;
+      this.backfillDanmakuAfterSeek();
+    });
+  }
+
+  backfillDanmakuAfterSeek() {
+    const danmaku = this.player.danmaku;
+    const container = danmaku?.container;
+    const currentTime = Number(this.player.video?.currentTime);
+    if (!danmaku?.showing || !container || !Number.isFinite(currentTime)) {
+      return;
+    }
+
+    const items = collectVisibleDanmakuBeforeTime(danmaku.dan, currentTime, {
+      speedRate: this.danmakuSpeedRate,
+      fullscreen: Boolean(this.player.fullScreen?.isFullScreen?.()),
+    });
+    const rowHeight = Number(danmaku.options?.height) || DEFAULT_DANMAKU_ROW_HEIGHT;
+    const rowCount = Math.max(1, Math.floor(container.offsetHeight / rowHeight));
+    const assignedItems = assignDanmakuBackfillLanes(items, {
+      containerWidth: container.offsetWidth,
+      rowCount,
+      measureText: (text) => this.measureDanmakuText(text),
+    });
+    const fragment = document.createDocumentFragment();
+
+    for (const item of assignedItems) {
+      fragment.appendChild(this.createDanmakuBackfillNode(danmaku, item, {
+        containerWidth: container.offsetWidth,
+        rowHeight,
+      }));
+    }
+
+    container.appendChild(fragment);
+  }
+
+  measureDanmakuText(text) {
+    try {
+      const measuredWidth = this.player.danmaku?._measure?.(text);
+      if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+        return measuredWidth;
+      }
+    } catch {
+      // Fall through to a conservative text-length estimate.
+    }
+
+    return String(text ?? "").length * 22;
+  }
+
+  createDanmakuBackfillNode(danmaku, item, { containerWidth, rowHeight }) {
+    const type = danmakuTypeName(item.danmaku.type);
+    const node = document.createElement("div");
+    node.classList.add("dplayer-danmaku-item", `dplayer-danmaku-${type}`, "dplayer-danmaku-move");
+    node.innerHTML = item.danmaku.border
+      ? `<span style="border:${item.danmaku.border}">${item.danmaku.text}</span>`
+      : item.danmaku.text;
+    node.style.opacity = danmaku._opacity;
+    node.style.color = numberToColor(item.danmaku.color);
+    node.style.animationDuration = `${item.duration}s`;
+
+    if (type === "right") {
+      node.style.width = `${item.width}px`;
+      node.style.top = `${rowHeight * item.lane}px`;
+      node.style.transform = `translateX(-${containerWidth}px)`;
+    } else if (type === "top") {
+      node.style.top = `${rowHeight * item.lane}px`;
+    } else {
+      node.style.bottom = `${rowHeight * item.lane}px`;
+    }
+
+    const elapsed = Math.min(
+      item.elapsed,
+      Math.max(0, item.duration - MIN_BACKFILL_REMAINING_SECONDS)
+    );
+    node.style.animationDelay = `-${elapsed}s`;
+    node.style.webkitAnimationDelay = `-${elapsed}s`;
+    this.trackDanmakuBackfillNode(danmaku, node, type, item.lane);
+    return node;
+  }
+
+  trackDanmakuBackfillNode(danmaku, node, type, lane) {
+    danmaku.danTunnel[type] ||= {};
+    danmaku.danTunnel[type][`${lane}`] ||= [];
+    danmaku.danTunnel[type][`${lane}`].push(node);
+
+    node.addEventListener("animationend", () => {
+      if (node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+
+      const row = danmaku.danTunnel[type]?.[`${lane}`];
+      if (!row) {
+        return;
+      }
+      const index = row.indexOf(node);
+      if (index >= 0) {
+        row.splice(index, 1);
+      }
+    });
   }
 
   setDanmaku(videoInfo) {
@@ -119,6 +258,11 @@ export default class DPlayerAdapter {
   }
 
   destroy() {
+    if (this.danmakuBackfillFrame) {
+      const cancel = globalThis.cancelAnimationFrame || globalThis.clearTimeout;
+      cancel(this.danmakuBackfillFrame);
+      this.danmakuBackfillFrame = null;
+    }
     this.player.destroy();
   }
 
