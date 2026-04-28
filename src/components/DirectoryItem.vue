@@ -75,7 +75,8 @@ export default {
     const suppressNextClick = ref(false)
 
     const isDirectory = computed(() => props.item.type === 'directory')
-    const historyKey = computed(() => Array.isArray(props.path) ? props.path.join(',') : String(props.path || ''))
+    const legacyHistoryKey = computed(() => Array.isArray(props.path) ? props.path.join(',') : String(props.path || ''))
+    const historyKey = computed(() => props.item.id || legacyHistoryKey.value)
     const watchProgress = computed(() => {
       if (isDirectory.value) {
         return 0
@@ -99,7 +100,11 @@ export default {
 
       try {
         const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
-        watchedSeconds.value = Number(history[historyKey.value]?.time || 0)
+        watchedSeconds.value = Number(
+          history[historyKey.value]?.time ||
+          history[legacyHistoryKey.value]?.time ||
+          0
+        )
       } catch {
         watchedSeconds.value = 0
       }

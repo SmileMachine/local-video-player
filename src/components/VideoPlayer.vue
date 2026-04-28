@@ -187,9 +187,9 @@ export default {
     }
 
     // Get the saved playback time
-    const loadVideoTime = (videoUrl) => {
+    const loadVideoTime = (videoId, fallbackPath) => {
       const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}')
-      return history[buildHistoryKey(videoUrl)]?.time || 0
+      return history[buildHistoryKey(videoId)]?.time || history[buildHistoryKey(fallbackPath)]?.time || 0
     }
 
     // Save the playback time
@@ -508,9 +508,9 @@ export default {
           // console.log('onTimeUpdate')
           // If is playing
           updateCount.value -= 1
-          if (nextPlayer.isPlaying() && currentVideoInfo.value.path && updateCount.value <= 0) {
+          if (nextPlayer.isPlaying() && currentVideoInfo.value.id && updateCount.value <= 0) {
             updateCount.value = 10
-            saveVideoTime(currentVideoInfo.value.path, nextPlayer.getCurrentTime())
+            saveVideoTime(currentVideoInfo.value.id, nextPlayer.getCurrentTime())
           }
         },
         onEnded: () => {
@@ -518,7 +518,7 @@ export default {
             return
           }
 
-          saveVideoTime(currentVideoInfo.value.path, 0)
+          saveVideoTime(currentVideoInfo.value.id, 0)
         }
       })
 
@@ -555,7 +555,7 @@ export default {
       }
 
       // Set the saved playback position
-      const savedTime = loadVideoTime(currentVideoInfo.value.path)
+      const savedTime = loadVideoTime(currentVideoInfo.value.id, currentVideoInfo.value.path)
       const timeElapsed = ref(0)
       const eps = 1e-3
       const MAX_ATTEMPTS = 500

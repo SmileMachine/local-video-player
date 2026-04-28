@@ -9,6 +9,7 @@ const DEFAULT_SORT_ORDER = "asc";
 const SORT_FIELDS = ["name", "duration", "size", "mtime"];
 const AUDIO_STATUS_POLL_INTERVAL_MS = 1000;
 const CAPTION_SELECTION_KEY = "video-caption-selection";
+const CURRENT_VIDEO_ID_KEY = "currentVideoId";
 
 export function useVideoLibrary() {
   if (instance) {
@@ -230,6 +231,7 @@ export function useVideoLibrary() {
           contentType: currentVideoContentType.value,
           captionTracks: captionStatus.tracks || [],
           captionDefaultTrackId: captionStatus.defaultTrackId || "",
+          id: newId,
           externalAudioUrl: "",
           externalAudioPreparing: audioNeeded,
           externalAudioProgress: null,
@@ -344,13 +346,40 @@ export function useVideoLibrary() {
       const response = await fetch("/api/videos");
       if (!response.ok) throw new Error("Failed to fetch videos");
       videos.value = await response.json();
-      const currentVideo = findVideoByPath(videos.value, currentPath.value);
+      const savedVideoId = localStorage.getItem(CURRENT_VIDEO_ID_KEY) || "";
+      const currentVideo =
+        findVideoById(videos.value, savedVideoId) ||
+        findVideoByPath(videos.value, currentPath.value);
       currentVideoItem.value = currentVideo || null;
       currentVideoId.value = currentVideo?.id || "";
+      if (currentVideo?.path) {
+        currentPath.value = currentVideo.path;
+        localStorage.setItem("currentPath", JSON.stringify(currentVideo.path));
+      }
     } catch (error) {
       console.error("Error fetching videos:", error);
       videos.value = [];
     }
+  };
+
+  const findVideoById = (items, id, parentPath = []) => {
+    if (!id) {
+      return null;
+    }
+
+    for (const item of items) {
+      const path = [...parentPath, item.name];
+      if (item.type === "directory") {
+        const found = findVideoById(item.children || [], id, path);
+        if (found) {
+          return found;
+        }
+      } else if (item.id === id) {
+        return { ...item, path };
+      }
+    }
+
+    return null;
   };
 
   const findVideoByPath = (items, path) => {
@@ -366,7 +395,7 @@ export function useVideoLibrary() {
       if (found.type === "directory") {
         current = found.children;
       } else {
-        return found;
+        return { ...found, path };
       }
     }
 
@@ -377,6 +406,7 @@ export function useVideoLibrary() {
     currentVideoItem.value = findVideoByPath(videos.value, path);
     currentVideoId.value = id;
     currentPath.value = path;
+    localStorage.setItem(CURRENT_VIDEO_ID_KEY, id);
     localStorage.setItem("currentPath", JSON.stringify(path));
   };
 

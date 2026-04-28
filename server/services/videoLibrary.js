@@ -6,6 +6,7 @@ import moment from "moment";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { buildVideoIdBase, createUniqueVideoId } from "../utils/videoIds.js";
 
 class VideoLibrary extends EventEmitter {
   constructor() {
@@ -24,18 +25,22 @@ class VideoLibrary extends EventEmitter {
     this.handleConfigUpdate();
   }
 
-  // delete path from object
-  // add id to object if `usePathIds` is true
-  processPathSecurity(obj, usePathIds) {
+  // Delete path from response objects and add stable ids to file nodes.
+  async processPathSecurity(obj, { usePathIds, config, idCounts }) {
     if (Array.isArray(obj)) {
-      return obj.map((item) => this.processPathSecurity(item, usePathIds));
+      const results = [];
+      for (const item of obj) {
+        results.push(await this.processPathSecurity(item, { usePathIds, config, idCounts }));
+      }
+      return results;
     }
 
     if (typeof obj === "object" && obj !== null) {
       const newObj = { ...obj };
       if (newObj.path) {
         if (usePathIds && newObj.type === "file") {
-          const id = crypto.randomUUID();
+          const idBase = await buildVideoIdBase(newObj.path, config);
+          const id = createUniqueVideoId(idBase, idCounts);
           this.idMap[id] = newObj.path;
           this.infoMap[id] = newObj.info || null;
           newObj.id = id;
@@ -44,7 +49,11 @@ class VideoLibrary extends EventEmitter {
       }
 
       if (newObj.children) {
-        newObj.children = this.processPathSecurity(newObj.children, usePathIds);
+        newObj.children = await this.processPathSecurity(newObj.children, {
+          usePathIds,
+          config,
+          idCounts,
+        });
       }
 
       return newObj;
@@ -72,7 +81,11 @@ class VideoLibrary extends EventEmitter {
       this.idMap = {};
       this.infoMap = {};
       this.videos = await this.scanVideoPaths(videoPaths, { useCache });
-      this.secureVideos = this.processPathSecurity(this.videos, usePathIds);
+      this.secureVideos = await this.processPathSecurity(this.videos, {
+        usePathIds,
+        config,
+        idCounts: new Map(),
+      });
       this.emit("updated");
       return this.secureVideos;
     })().finally(() => {
