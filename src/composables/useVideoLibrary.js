@@ -9,7 +9,14 @@ const DEFAULT_SORT_ORDER = "asc";
 const SORT_FIELDS = ["name", "duration", "size", "mtime"];
 const AUDIO_STATUS_POLL_INTERVAL_MS = 1000;
 const CAPTION_SELECTION_KEY = "video-caption-selection";
+const CAPTION_SELECTIONS_KEY = "video-caption-selections";
 const CURRENT_VIDEO_ID_KEY = "currentVideoId";
+const DEFAULT_CAPTION_SELECTION = {
+  enabled: true,
+  combined: false,
+  primaryTrackId: "",
+  secondaryTrackId: "",
+};
 
 export function useVideoLibrary() {
   if (instance) {
@@ -52,27 +59,44 @@ export function useVideoLibrary() {
     return getVideoContentType(fileName);
   });
 
-  const readCaptionSelection = () => {
+  const normalizeStoredCaptionSelection = (value = {}) => ({
+    ...DEFAULT_CAPTION_SELECTION,
+    enabled: value.enabled !== false,
+    combined: Boolean(value.combined),
+    primaryTrackId: value.primaryTrackId || "",
+    secondaryTrackId: value.secondaryTrackId || "",
+  });
+
+  const readLegacyCaptionSelection = () => {
     try {
       const parsed = JSON.parse(localStorage.getItem(CAPTION_SELECTION_KEY) || "{}");
-      return {
-        enabled: parsed.enabled !== false,
-        combined: Boolean(parsed.combined),
-        primaryTrackId: parsed.primaryTrackId || "",
-        secondaryTrackId: parsed.secondaryTrackId || "",
-      };
+      return normalizeStoredCaptionSelection(parsed);
     } catch {
-      return {
-        enabled: true,
-        combined: false,
-        primaryTrackId: "",
-        secondaryTrackId: "",
-      };
+      return { ...DEFAULT_CAPTION_SELECTION };
     }
   };
 
+  const readCaptionSelections = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(CAPTION_SELECTIONS_KEY) || "{}");
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const captionSelections = ref(readCaptionSelections());
+
+  const readCaptionSelectionForVideo = (videoId) => {
+    const storedSelection = captionSelections.value[videoId];
+    if (storedSelection) {
+      return normalizeStoredCaptionSelection(storedSelection);
+    }
+    return readLegacyCaptionSelection();
+  };
+
   const currentVideoInfo = ref({ captionExists: false });
-  const captionSelection = ref(readCaptionSelection());
+  const captionSelection = ref(readCaptionSelectionForVideo(currentVideoId.value));
   let videoInfoRequestId = 0;
 
   const supportedCaptionTracks = computed(() =>
@@ -80,7 +104,14 @@ export function useVideoLibrary() {
   );
 
   const saveCaptionSelection = () => {
-    localStorage.setItem(CAPTION_SELECTION_KEY, JSON.stringify(captionSelection.value));
+    if (!currentVideoId.value) {
+      return;
+    }
+    captionSelections.value = {
+      ...captionSelections.value,
+      [currentVideoId.value]: captionSelection.value,
+    };
+    localStorage.setItem(CAPTION_SELECTIONS_KEY, JSON.stringify(captionSelections.value));
   };
 
   const normalizeCaptionSelection = (tracks, defaultTrackId) => {
@@ -226,6 +257,7 @@ export function useVideoLibrary() {
           return;
         }
 
+        captionSelection.value = readCaptionSelectionForVideo(newId);
         currentVideoInfo.value = {
           videoUrl: currentVideoUrl.value,
           contentType: currentVideoContentType.value,
