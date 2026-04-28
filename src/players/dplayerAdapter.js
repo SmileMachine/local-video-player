@@ -1,15 +1,25 @@
 import DPlayer from "dplayer";
 
 const EMPTY_CAPTION_URL = "data:text/vtt;charset=utf-8,WEBVTT%0A%0A";
+const DANMAKU_API = "/danmaku/";
 
 export default class DPlayerAdapter {
   constructor(options) {
     this.externalAudio = null;
+    this.danmakuSpeedRate = 1;
     this.player = new DPlayer({
       container: options.container,
       screenshot: true,
       video: { url: "" },
       subtitle: { url: "", fontSize: "25px", bottom: "7%" },
+      danmaku: {
+        id: "",
+        api: DANMAKU_API,
+        maximum: 3000,
+        user: "local",
+        bottom: "15%",
+        speedRate: this.danmakuSpeedRate,
+      },
       volume: 1,
     });
 
@@ -24,9 +34,47 @@ export default class DPlayerAdapter {
 
   setSource(videoInfo) {
     this.setCaption(videoInfo);
-    this.player.switchVideo({
-      url: videoInfo.videoUrl,
-    });
+    this.player.switchVideo(
+      {
+        url: videoInfo.videoUrl,
+      },
+      this.createDanmakuOptions(videoInfo)
+    );
+    this.setDanmakuSpeed(this.danmakuSpeedRate);
+  }
+
+  createDanmakuOptions(videoInfo) {
+    return {
+      id: videoInfo.id || "",
+      api: DANMAKU_API,
+      maximum: 3000,
+      user: "local",
+      speedRate: this.danmakuSpeedRate,
+    };
+  }
+
+  setDanmakuSpeed(speedRate) {
+    const nextSpeedRate = Number(speedRate);
+    if (!Number.isFinite(nextSpeedRate) || nextSpeedRate <= 0) {
+      return;
+    }
+
+    this.danmakuSpeedRate = nextSpeedRate;
+    this.player.danmaku?.speed?.(nextSpeedRate);
+  }
+
+  setDanmaku(videoInfo) {
+    if (!this.player.danmaku) {
+      return;
+    }
+
+    const originalCallback = this.player.danmaku.options.callback;
+    this.player.danmaku.options.callback = () => {
+      originalCallback?.();
+      this.player.danmaku?.seek();
+      this.player.danmaku.options.callback = originalCallback;
+    };
+    this.player.danmaku.reload(this.createDanmakuOptions(videoInfo));
   }
 
   setCaption(videoInfo) {

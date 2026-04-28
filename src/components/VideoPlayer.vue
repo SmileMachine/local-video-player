@@ -2,12 +2,12 @@
   <div class="video-player">
     <div ref="playerMountRef" class="player-mount"></div>
     <div
-      v-if="supportedCaptionTracks.length && showCaptionMenu"
+      v-if="captionMenuVisible"
       class="caption-menu"
       :style="captionMenuStyle"
       @click.stop
     >
-      <div class="caption-field">
+      <div v-if="supportedCaptionTracks.length" class="caption-field">
         <label class="caption-field-heading">
           <input
             type="checkbox"
@@ -55,6 +55,83 @@
         </select>
       </div>
     </div>
+    <div
+      v-if="danmakuMenuVisible"
+      class="caption-menu"
+      :style="danmakuMenuStyle"
+      @click.stop
+    >
+      <div class="caption-field">
+        <label class="caption-field-heading" for="danmaku-speed-input">
+          <span>弹幕速度</span>
+          <span class="danmaku-speed-value">{{ danmakuSpeedText }}</span>
+        </label>
+        <input
+          id="danmaku-speed-input"
+          class="danmaku-speed-slider"
+          type="range"
+          min="0.1"
+          max="1"
+          step="0.1"
+          :value="danmakuSpeed"
+          @input="setDanmakuSpeed($event.target.value)"
+        />
+      </div>
+      <div class="caption-field">
+        <label class="caption-field-heading" for="danmaku-shadow-select">弹幕阴影</label>
+        <select
+          id="danmaku-shadow-select"
+          :value="danmakuShadow"
+          @change="setDanmakuShadow($event.target.value)"
+        >
+          <option value="off">关闭</option>
+          <option value="soft">弱</option>
+          <option value="strong">强</option>
+        </select>
+      </div>
+      <div class="caption-field">
+        <label class="caption-field-heading" for="danmaku-weight-select">弹幕字重</label>
+        <select
+          id="danmaku-weight-select"
+          :value="danmakuWeight"
+          @change="setDanmakuWeight($event.target.value)"
+        >
+          <option value="normal">普通</option>
+          <option value="medium">中等</option>
+          <option value="bold">加粗</option>
+        </select>
+      </div>
+      <form class="caption-field" @submit.prevent="submitDanmakuImport">
+        <label class="caption-field-heading" for="danmaku-bvid-input">B站弹幕</label>
+        <div v-if="currentVideoInfo.danmakuExists" class="danmaku-import-current">
+          当前：{{ currentVideoInfo.danmakuFileName || '已加载本地弹幕' }}
+        </div>
+        <div class="danmaku-import-row">
+          <input
+            id="danmaku-bvid-input"
+            v-model.trim="danmakuBvid"
+            class="danmaku-import-input"
+            type="text"
+            placeholder="BV号"
+            :disabled="danmakuImporting"
+          />
+          <button
+            class="danmaku-import-button"
+            type="submit"
+            :disabled="danmakuImporting || !danmakuBvid"
+          >
+            {{ danmakuImporting ? '导入中' : '导入' }}
+          </button>
+        </div>
+        <div
+          v-if="danmakuImportMessage"
+          class="danmaku-import-status"
+          :class="{ 'danmaku-import-status-error': danmakuImportError }"
+        >
+          {{ danmakuImportMessage }}
+        </div>
+      </form>
+    </div>
     <div v-if="audioPreparingVisible" class="audio-preparing">
       <span class="audio-preparing-spinner" aria-hidden="true"></span>
       <span>{{ audioPreparingMessage }}</span>
@@ -88,14 +165,43 @@ export default {
     let activeVideoUrl = ''
     let activeExternalAudioUrl = ''
     let activeCaptionUrl = ''
+    let activeDanmakuSignature = ''
     const playerMountRef = ref(null)
     const updateCount = ref(10)
     const showCaptionMenu = ref(false)
     const captionMenuStyle = ref({ right: '16px', bottom: '64px' })
+    const showDanmakuMenu = ref(false)
+    const danmakuMenuStyle = ref({ right: '16px', bottom: '64px' })
+    const danmakuBvid = ref('')
+    const danmakuImporting = ref(false)
+    const danmakuImportMessage = ref('')
+    const danmakuImportError = ref(false)
 
     const MAX_HISTORY_ITEMS = 100
     const HISTORY_KEY = 'video-time-history'
+    const DANMAKU_SPEED_KEY = 'video-danmaku-speed'
+    const DANMAKU_SHADOW_KEY = 'video-danmaku-shadow'
+    const DANMAKU_WEIGHT_KEY = 'video-danmaku-weight'
+    const DANMAKU_SHADOW_VALUES = new Set(['off', 'soft', 'strong'])
+    const DANMAKU_WEIGHT_VALUES = new Set(['normal', 'medium', 'bold'])
+    const MIN_DANMAKU_SPEED = 0.1
+    const MAX_DANMAKU_SPEED = 1
     const buildHistoryKey = (vidKey) => Array.isArray(vidKey) ? vidKey.join(',') : String(vidKey || '')
+    const normalizeDanmakuSpeed = (value) => {
+      const speed = Number(value)
+      if (!Number.isFinite(speed)) {
+        return 1
+      }
+      return Math.max(MIN_DANMAKU_SPEED, Math.min(MAX_DANMAKU_SPEED, Math.round(speed * 10) / 10))
+    }
+    const readDanmakuSpeed = () => normalizeDanmakuSpeed(localStorage.getItem(DANMAKU_SPEED_KEY))
+    const normalizeDanmakuShadow = (value) => DANMAKU_SHADOW_VALUES.has(value) ? value : 'soft'
+    const readDanmakuShadow = () => normalizeDanmakuShadow(localStorage.getItem(DANMAKU_SHADOW_KEY))
+    const normalizeDanmakuWeight = (value) => DANMAKU_WEIGHT_VALUES.has(value) ? value : 'medium'
+    const readDanmakuWeight = () => normalizeDanmakuWeight(localStorage.getItem(DANMAKU_WEIGHT_KEY))
+    const danmakuSpeed = ref(readDanmakuSpeed())
+    const danmakuShadow = ref(readDanmakuShadow())
+    const danmakuWeight = ref(readDanmakuWeight())
 
     const {
       currentVideoInfo,
@@ -104,8 +210,17 @@ export default {
       setCaptionEnabled,
       setCaptionPrimaryTrack,
       setCaptionSecondaryTrack,
-      setCaptionCombined
+      setCaptionCombined,
+      importDanmaku
     } = useVideoLibrary()
+    const canImportDanmaku = computed(() => props.playerType === 'DPlayer' && Boolean(currentVideoInfo.value.id))
+    const captionMenuVisible = computed(() =>
+      showCaptionMenu.value && Boolean(supportedCaptionTracks.value.length)
+    )
+    const danmakuMenuVisible = computed(() =>
+      showDanmakuMenu.value && canImportDanmaku.value
+    )
+    const danmakuSpeedText = computed(() => `${danmakuSpeed.value.toFixed(1)}x`)
     const audioPreparingProgressText = computed(() => {
       if (!currentVideoInfo.value.externalAudioPreparing) {
         return ''
@@ -143,16 +258,16 @@ export default {
       '.dplayer-subtitles-icon'
     ].join(', ')
 
-    const openCaptionMenu = (trigger) => {
-      if (!supportedCaptionTracks.value.length) {
-        return
-      }
+    const danmakuTriggerSelector = [
+      '.dplayer-comment',
+      '.dplayer-comment-icon'
+    ].join(', ')
 
+    const positionMenu = (trigger, targetStyleRef) => {
       const playerRect = playerMountRef.value?.getBoundingClientRect()
       const triggerRect = trigger?.getBoundingClientRect?.()
       if (!playerRect || !triggerRect) {
-        captionMenuStyle.value = { right: '16px', bottom: '64px' }
-        showCaptionMenu.value = true
+        targetStyleRef.value = { right: '16px', bottom: '64px' }
         return
       }
 
@@ -165,22 +280,33 @@ export default {
       )
       const bottom = Math.max(margin, playerRect.bottom - triggerRect.top + margin)
 
-      captionMenuStyle.value = {
+      targetStyleRef.value = {
         left: `${left}px`,
         bottom: `${bottom}px`
       }
-      showCaptionMenu.value = true
     }
 
-    const handleCaptionTriggerEvent = (event) => {
-      const trigger = event.target?.closest?.(captionTriggerSelector)
-      if (!trigger || !playerMountRef.value?.contains(trigger)) {
+    const openCaptionMenu = (trigger) => {
+      if (!supportedCaptionTracks.value.length) {
         return
       }
 
-      event.preventDefault()
-      event.stopPropagation()
-      event.stopImmediatePropagation?.()
+      positionMenu(trigger, captionMenuStyle)
+      showDanmakuMenu.value = false
+      showCaptionMenu.value = true
+    }
+
+    const openDanmakuMenu = (trigger) => {
+      if (!canImportDanmaku.value) {
+        return
+      }
+
+      positionMenu(trigger, danmakuMenuStyle)
+      showCaptionMenu.value = false
+      showDanmakuMenu.value = true
+    }
+
+    const toggleCaptionMenu = (trigger) => {
       if (showCaptionMenu.value) {
         showCaptionMenu.value = false
         return
@@ -188,11 +314,130 @@ export default {
       openCaptionMenu(trigger)
     }
 
-    const handleCaptionTriggerKeydown = (event) => {
+    const toggleDanmakuMenu = (trigger) => {
+      if (showDanmakuMenu.value) {
+        showDanmakuMenu.value = false
+        return
+      }
+      openDanmakuMenu(trigger)
+    }
+
+    const handleMenuTriggerEvent = (event) => {
+      const danmakuTrigger = event.target?.closest?.(danmakuTriggerSelector)
+      if (danmakuTrigger && playerMountRef.value?.contains(danmakuTrigger)) {
+        event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation?.()
+        toggleDanmakuMenu(danmakuTrigger)
+        return
+      }
+
+      const captionTrigger = event.target?.closest?.(captionTriggerSelector)
+      if (!captionTrigger || !playerMountRef.value?.contains(captionTrigger)) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      event.stopImmediatePropagation?.()
+      toggleCaptionMenu(captionTrigger)
+    }
+
+    const handleMenuTriggerKeydown = (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return
       }
-      handleCaptionTriggerEvent(event)
+
+      const danmakuTrigger = event.target?.closest?.(danmakuTriggerSelector)
+      if (danmakuTrigger && playerMountRef.value?.contains(danmakuTrigger)) {
+        handleMenuTriggerEvent(event)
+        return
+      }
+
+      const captionTrigger = event.target?.closest?.(captionTriggerSelector)
+      if (captionTrigger && playerMountRef.value?.contains(captionTrigger)) {
+        handleMenuTriggerEvent(event)
+      }
+    }
+
+    const closeMediaMenus = () => {
+      showCaptionMenu.value = false
+      showDanmakuMenu.value = false
+    }
+
+    const clearDanmakuImportStatus = () => {
+      danmakuImportMessage.value = ''
+      danmakuImportError.value = false
+    }
+
+    const resetDanmakuImportForm = () => {
+      danmakuBvid.value = ''
+      clearDanmakuImportStatus()
+    }
+
+    const closeMediaMenusAndFocus = () => {
+      closeMediaMenus()
+      setTimeout(focusVideo, 0)
+    }
+
+    const setDanmakuSpeed = (value) => {
+      const nextSpeed = normalizeDanmakuSpeed(value)
+      danmakuSpeed.value = nextSpeed
+      localStorage.setItem(DANMAKU_SPEED_KEY, String(nextSpeed))
+      player?.setDanmakuSpeed?.(nextSpeed)
+    }
+
+    const applyDanmakuStyle = () => {
+      const mount = playerMountRef.value
+      if (!mount) {
+        return
+      }
+
+      mount.classList.remove(
+        'danmaku-shadow-off',
+        'danmaku-shadow-soft',
+        'danmaku-shadow-strong'
+      )
+      mount.classList.remove(
+        'danmaku-weight-normal',
+        'danmaku-weight-medium',
+        'danmaku-weight-bold'
+      )
+      mount.classList.add(`danmaku-shadow-${danmakuShadow.value}`)
+      mount.classList.add(`danmaku-weight-${danmakuWeight.value}`)
+    }
+
+    const setDanmakuShadow = (value) => {
+      const nextShadow = normalizeDanmakuShadow(value)
+      danmakuShadow.value = nextShadow
+      localStorage.setItem(DANMAKU_SHADOW_KEY, nextShadow)
+      applyDanmakuStyle()
+    }
+
+    const setDanmakuWeight = (value) => {
+      const nextWeight = normalizeDanmakuWeight(value)
+      danmakuWeight.value = nextWeight
+      localStorage.setItem(DANMAKU_WEIGHT_KEY, nextWeight)
+      applyDanmakuStyle()
+    }
+
+    const submitDanmakuImport = async () => {
+      if (!danmakuBvid.value || danmakuImporting.value) {
+        return
+      }
+
+      danmakuImporting.value = true
+      danmakuImportError.value = false
+      danmakuImportMessage.value = '正在导入弹幕'
+      try {
+        const result = await importDanmaku(danmakuBvid.value)
+        danmakuImportMessage.value = `已导入 ${result.stats?.converted ?? 0} 条弹幕`
+      } catch (error) {
+        danmakuImportError.value = true
+        danmakuImportMessage.value = error.message || '弹幕导入失败'
+      } finally {
+        danmakuImporting.value = false
+      }
     }
 
     // Get the saved playback time
@@ -254,6 +499,7 @@ export default {
       activeVideoUrl = ''
       activeExternalAudioUrl = ''
       activeCaptionUrl = ''
+      activeDanmakuSignature = ''
 
       if (playerMountRef.value) {
         playerMountRef.value.replaceChildren()
@@ -444,12 +690,14 @@ export default {
         return
       }
 
+      const danmakuSignature = `${videoInfo.id || ''}:${videoInfo.danmakuVersion || 0}`
       const isNewVideo = videoInfo.videoUrl !== activeVideoUrl
       if (isNewVideo) {
         cleanupExternalAudio()
         activeVideoUrl = videoInfo.videoUrl
         activeExternalAudioUrl = ''
         activeCaptionUrl = videoInfo.captionUrl || ''
+        activeDanmakuSignature = danmakuSignature
         targetPlayer.once('canplay', () => handleReady(token, targetPlayer))
         targetPlayer.setSource(videoInfo)
         updateExternalAudioPreparingState(videoInfo, targetPlayer)
@@ -463,6 +711,10 @@ export default {
       if ((videoInfo.captionUrl || '') !== activeCaptionUrl) {
         activeCaptionUrl = videoInfo.captionUrl || ''
         targetPlayer.setCaption?.(videoInfo)
+      }
+      if (danmakuSignature !== activeDanmakuSignature) {
+        activeDanmakuSignature = danmakuSignature
+        targetPlayer.setDanmaku?.(videoInfo)
       }
       if (videoInfo.externalAudioUrl !== activeExternalAudioUrl) {
         if (videoInfo.externalAudioUrl) {
@@ -537,6 +789,8 @@ export default {
       }
 
       player = nextPlayer
+      nextPlayer.setDanmakuSpeed?.(danmakuSpeed.value)
+      applyDanmakuStyle()
 
       // Expose player instance for keyboard shortcuts
       window.__videoPlayer = player
@@ -546,16 +800,11 @@ export default {
       }
     }
 
-    const handleWindowClick = () => {
-      showCaptionMenu.value = false
-      setTimeout(focusVideo, 0)
-    }
-
     onMounted(async () => {
       await initPlayer()
-      window.addEventListener('click', handleWindowClick)
-      playerMountRef.value?.addEventListener('click', handleCaptionTriggerEvent, true)
-      playerMountRef.value?.addEventListener('keydown', handleCaptionTriggerKeydown, true)
+      window.addEventListener('click', closeMediaMenusAndFocus)
+      playerMountRef.value?.addEventListener('click', handleMenuTriggerEvent, true)
+      playerMountRef.value?.addEventListener('keydown', handleMenuTriggerKeydown, true)
     })
 
     const handleReady = (token, readyPlayer) => {
@@ -609,14 +858,23 @@ export default {
       await initPlayer()
     })
 
+    watch(() => danmakuShadow.value, () => {
+      applyDanmakuStyle()
+    })
+
+    watch(() => danmakuWeight.value, () => {
+      applyDanmakuStyle()
+    })
+
     watch(() => currentVideoInfo.value.videoUrl, () => {
-      showCaptionMenu.value = false
+      closeMediaMenus()
+      resetDanmakuImportForm()
     })
 
     onUnmounted(() => {
-      window.removeEventListener('click', handleWindowClick)
-      playerMountRef.value?.removeEventListener('click', handleCaptionTriggerEvent, true)
-      playerMountRef.value?.removeEventListener('keydown', handleCaptionTriggerKeydown, true)
+      window.removeEventListener('click', closeMediaMenusAndFocus)
+      playerMountRef.value?.removeEventListener('click', handleMenuTriggerEvent, true)
+      playerMountRef.value?.removeEventListener('keydown', handleMenuTriggerKeydown, true)
       destroyPlayer()
     })
 
@@ -629,9 +887,26 @@ export default {
       captionSelection,
       supportedCaptionTracks,
       secondaryCaptionTracks,
+      canImportDanmaku,
+      captionMenuVisible,
+      danmakuMenuVisible,
       showCaptionMenu,
       captionMenuStyle,
+      showDanmakuMenu,
+      danmakuMenuStyle,
+      danmakuBvid,
+      danmakuSpeed,
+      danmakuSpeedText,
+      danmakuShadow,
+      danmakuWeight,
+      danmakuImporting,
+      danmakuImportMessage,
+      danmakuImportError,
       formatCaptionTrackLabel,
+      setDanmakuSpeed,
+      setDanmakuShadow,
+      setDanmakuWeight,
+      submitDanmakuImport,
       setCaptionEnabled,
       setCaptionPrimaryTrack,
       setCaptionSecondaryTrack,
@@ -682,6 +957,36 @@ export default {
   display: none !important;
 }
 
+.player-mount.danmaku-shadow-off .dplayer-danmaku-item {
+  text-shadow: none;
+}
+
+.player-mount.danmaku-shadow-soft .dplayer-danmaku-item {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.7),
+    1px 0 2px rgba(0, 0, 0, 0.7);
+}
+
+.player-mount.danmaku-shadow-strong .dplayer-danmaku-item {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.98),
+    1px 0 2px rgba(0, 0, 0, 0.94),
+    0 -1px 2px rgba(0, 0, 0, 0.88),
+    -1px 0 2px rgba(0, 0, 0, 0.88);
+}
+
+.player-mount.danmaku-weight-normal .dplayer-danmaku-item {
+  font-weight: 400;
+}
+
+.player-mount.danmaku-weight-medium .dplayer-danmaku-item {
+  font-weight: 600;
+}
+
+.player-mount.danmaku-weight-bold .dplayer-danmaku-item {
+  font-weight: 700;
+}
+
 .caption-menu {
   position: absolute;
   width: 240px;
@@ -729,6 +1034,72 @@ export default {
   color: rgba(255, 255, 255, 0.92);
   font-size: 13px;
   padding: 6px 8px;
+}
+
+.danmaku-import-current {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.danmaku-speed-value {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.68);
+  font-variant-numeric: tabular-nums;
+}
+
+.danmaku-speed-slider {
+  width: 100%;
+  accent-color: #ffffff;
+}
+
+.danmaku-import-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.danmaku-import-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background-color: rgba(20, 20, 20, 0.96);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
+.danmaku-import-button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 0, 0, 0.9);
+  font-size: 13px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.danmaku-import-button:disabled,
+.danmaku-import-input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.danmaku-import-status {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.danmaku-import-status-error {
+  color: #ffb4a8;
 }
 
 .audio-preparing {

@@ -217,6 +217,45 @@ export function useVideoLibrary() {
     return response.json();
   };
 
+  const getDanmakuStatus = async (videoId) => {
+    const response = await fetch(`/danmaku/status?id=${encodeURIComponent(videoId)}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch danmaku status");
+    }
+    return response.json();
+  };
+
+  const importDanmaku = async (bvid, page = 1) => {
+    if (!currentVideoId.value) {
+      throw new Error("No current video");
+    }
+
+    const response = await fetch("/danmaku/import", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: currentVideoId.value,
+        bvid,
+        page,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || "Failed to import danmaku");
+    }
+
+    currentVideoInfo.value = {
+      ...currentVideoInfo.value,
+      danmakuExists: true,
+      danmakuFileName: payload.files?.dplayer || "",
+      danmakuSource: payload,
+      danmakuVersion: Date.now(),
+    };
+    return payload;
+  };
+
   const getAudioStatus = async (videoId) => {
     if (!needsCompatibleAudio(currentVideoItem.value?.info?.audio)) {
       return { enabled: false, needed: false, url: "" };
@@ -246,12 +285,24 @@ export function useVideoLibrary() {
         const requestId = ++videoInfoRequestId;
         const audioNeeded = needsCompatibleAudio(currentVideoItem.value?.info?.audio);
         let captionStatus = { exists: false };
+        let danmakuStatus = { exists: false };
 
-        try {
-          captionStatus = await getCaptionStatus(newId);
-        } catch (error) {
-          console.error("Error fetching caption status:", error);
-        }
+        await Promise.all([
+          getCaptionStatus(newId)
+            .then((status) => {
+              captionStatus = status;
+            })
+            .catch((error) => {
+              console.error("Error fetching caption status:", error);
+            }),
+          getDanmakuStatus(newId)
+            .then((status) => {
+              danmakuStatus = status;
+            })
+            .catch((error) => {
+              console.error("Error fetching danmaku status:", error);
+            }),
+        ]);
 
         if (requestId !== videoInfoRequestId || newId !== currentVideoId.value) {
           return;
@@ -263,6 +314,9 @@ export function useVideoLibrary() {
           contentType: currentVideoContentType.value,
           captionTracks: captionStatus.tracks || [],
           captionDefaultTrackId: captionStatus.defaultTrackId || "",
+          danmakuExists: Boolean(danmakuStatus.exists),
+          danmakuFileName: danmakuStatus.fileName || "",
+          danmakuVersion: 0,
           id: newId,
           externalAudioUrl: "",
           externalAudioChecking: audioNeeded,
@@ -631,6 +685,7 @@ export function useVideoLibrary() {
     setCaptionPrimaryTrack,
     setCaptionSecondaryTrack,
     setCaptionCombined,
+    importDanmaku,
     setSortBy,
     toggleSortOrder,
     fetchVideos,

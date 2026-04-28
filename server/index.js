@@ -10,6 +10,7 @@ import videoRouter from "./routes/video.js";
 import apiRouter from "./routes/api.js";
 import captionRouter from "./routes/caption.js";
 import audioRouter from "./routes/audio.js";
+import danmakuRouter from "./routes/danmaku.js";
 import { setupVite } from "./config/vite.js";
 import { loggerMiddleware } from "./middleware/logger.js";
 import { logger } from "./utils/logger.js";
@@ -59,6 +60,7 @@ async function createServer() {
   // Mount the routes
   app.use("/video", videoRouter);
   app.use("/audio", audioRouter);
+  app.use("/danmaku", danmakuRouter);
   app.use("/api", apiRouter);
   app.use("/caption", captionRouter);
 
