@@ -9,7 +9,7 @@
         :aria-expanded="showCaptionMenu"
         @click="showCaptionMenu = !showCaptionMenu"
       >
-        CC
+        <i class="fa-solid fa-closed-captioning" aria-hidden="true"></i>
       </button>
       <div v-if="showCaptionMenu" class="caption-menu">
         <label class="caption-toggle">
@@ -612,21 +612,33 @@ export default {
 
 .caption-control {
   position: absolute;
-  left: 16px;
+  right: 16px;
   top: 16px;
   z-index: 20;
   color: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.video-player:hover .caption-control,
+.caption-control:focus-within,
+.caption-control:has(.caption-menu) {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .caption-control-button {
-  min-width: 42px;
-  height: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
   border-radius: 6px;
   background-color: rgba(0, 0, 0, 0.68);
   color: rgba(255, 255, 255, 0.92);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
   cursor: pointer;
 }
 
@@ -634,9 +646,16 @@ export default {
   background-color: rgba(24, 24, 24, 0.82);
 }
 
+.caption-control-button:focus,
+.caption-control-button:active {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
 .caption-menu {
   position: absolute;
-  left: 0;
+  right: 0;
   top: 40px;
   width: 240px;
   display: flex;

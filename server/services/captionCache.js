@@ -7,6 +7,7 @@ import { combineVtt } from "../../shared/vtt.js";
 
 const CAPTION_CACHE_DIR = "cache/captions";
 const inFlightJobs = new Map();
+const EXTERNAL_SUBTITLE_FORMATS = new Set(["vtt", "srt", "ass", "ssa"]);
 
 const ffprobe = (filePath) =>
   new Promise((resolve, reject) => {
@@ -18,11 +19,6 @@ const ffprobe = (filePath) =>
       resolve(metadata);
     });
   });
-
-const getBasePath = (videoPath) => {
-  const parsed = path.parse(videoPath);
-  return path.join(parsed.dir, parsed.name);
-};
 
 const getCacheDir = () => path.resolve(CAPTION_CACHE_DIR);
 
@@ -38,41 +34,78 @@ const getFileFingerprint = async (filePath) => {
   };
 };
 
-const externalTrack = async ({ videoPath, extension, format, label }) => {
-  const filePath = `${getBasePath(videoPath)}.${extension}`;
-  try {
-    await fs.promises.access(filePath, fs.constants.R_OK);
-    return {
-      id: `external:${format}`,
-      label,
-      language: "und",
-      format,
-      source: "external",
-      supported: true,
-      filePath,
-    };
-  } catch {
+const normalizeExternalLanguage = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/_/g, "-")
+    .toLowerCase();
+  if (/^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/.test(normalized)) {
+    return normalized;
+  }
+  return "und";
+};
+
+const createExternalTrackId = ({ format, suffix, fileName }) => {
+  if (!suffix && (format === "vtt" || format === "srt")) {
+    return `external:${format}`;
+  }
+
+  return `external:${hashObject({ fileName }).slice(0, 16)}`;
+};
+
+const createExternalTrack = ({ dir, videoName, fileName }) => {
+  const parsed = path.parse(fileName);
+  const format = parsed.ext.slice(1).toLowerCase();
+  if (!EXTERNAL_SUBTITLE_FORMATS.has(format)) {
     return null;
   }
+
+  const prefix = `${videoName}.`;
+  if (parsed.name !== videoName && !parsed.name.startsWith(prefix)) {
+    return null;
+  }
+
+  const suffix = parsed.name === videoName ? "" : parsed.name.slice(prefix.length);
+  const label = suffix ? `${suffix} ${format.toUpperCase()}` : `同名 ${format.toUpperCase()}`;
+  const formatOrder = ["vtt", "srt", "ass", "ssa"].indexOf(format);
+
+  return {
+    id: createExternalTrackId({ format, suffix, fileName }),
+    label,
+    language: normalizeExternalLanguage(suffix),
+    format,
+    order: suffix ? 1 : 0,
+    formatOrder: formatOrder === -1 ? EXTERNAL_SUBTITLE_FORMATS.size : formatOrder,
+    source: "external",
+    supported: true,
+    filePath: path.join(dir, fileName),
+  };
 };
 
 const buildExternalTracks = async (videoPath) => {
-  const tracks = await Promise.all([
-    externalTrack({
-      videoPath,
-      extension: "vtt",
-      format: "vtt",
-      label: "同名 VTT",
-    }),
-    externalTrack({
-      videoPath,
-      extension: "srt",
-      format: "srt",
-      label: "同名 SRT",
-    }),
-  ]);
+  const parsedVideoPath = path.parse(videoPath);
+  const dirEntries = await fs.promises.readdir(parsedVideoPath.dir, { withFileTypes: true });
+  const tracks = dirEntries
+    .filter((entry) => entry.isFile())
+    .map((entry) => createExternalTrack({
+      dir: parsedVideoPath.dir,
+      videoName: parsedVideoPath.name,
+      fileName: entry.name,
+    }))
+    .filter(Boolean);
 
-  return tracks.filter(Boolean);
+  return tracks.sort((a, b) => {
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    if (a.formatOrder !== b.formatOrder) {
+      return a.formatOrder - b.formatOrder;
+    }
+    return a.label.localeCompare(b.label, "zh-Hans-CN", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
 };
 
 const buildEmbeddedTracks = async (videoPath, mediaInfo) => {
@@ -94,6 +127,7 @@ const serializeTrack = (track) => ({
   supported: track.supported,
   imageSubtitle: track.imageSubtitle,
   default: track.default,
+  fileName: track.filePath ? path.basename(track.filePath) : undefined,
 });
 
 export const getCaptionTracks = async (videoPath, mediaInfo = null) => {
