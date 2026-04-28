@@ -265,7 +265,8 @@ export function useVideoLibrary() {
           captionDefaultTrackId: captionStatus.defaultTrackId || "",
           id: newId,
           externalAudioUrl: "",
-          externalAudioPreparing: audioNeeded,
+          externalAudioChecking: audioNeeded,
+          externalAudioPreparing: false,
           externalAudioProgress: null,
           externalAudio: { enabled: false, needed: audioNeeded, url: "" },
           mediaInfo: currentVideoItem.value?.info || null,
@@ -289,6 +290,8 @@ export function useVideoLibrary() {
 
           currentVideoInfo.value = {
             ...currentVideoInfo.value,
+            externalAudioChecking: false,
+            externalAudioPreparing: Boolean(audioStatus.enabled && audioStatus.needed && !audioStatus.exists),
             externalAudioProgress: audioStatus.progress ?? null,
             externalAudio: audioStatus,
           };
@@ -309,6 +312,8 @@ export function useVideoLibrary() {
 
             currentVideoInfo.value = {
               ...currentVideoInfo.value,
+              externalAudioChecking: false,
+              externalAudioPreparing: !audioStatus.exists,
               externalAudioProgress: audioStatus.progress ?? currentVideoInfo.value.externalAudioProgress ?? null,
               externalAudio: {
                 ...currentVideoInfo.value.externalAudio,
@@ -325,6 +330,7 @@ export function useVideoLibrary() {
           currentVideoInfo.value = {
             ...currentVideoInfo.value,
             externalAudioUrl: finalAudioStatus.enabled && finalAudioStatus.needed ? finalAudioStatus.url : "",
+            externalAudioChecking: false,
             externalAudioPreparing: false,
             externalAudioProgress: finalAudioStatus.progress ?? 100,
             externalAudio: finalAudioStatus,
@@ -337,6 +343,7 @@ export function useVideoLibrary() {
 
           currentVideoInfo.value = {
             ...currentVideoInfo.value,
+            externalAudioChecking: false,
             externalAudioPreparing: false,
             externalAudioProgress: null,
             externalAudio: { enabled: false, needed: true, url: "", error: error.message },

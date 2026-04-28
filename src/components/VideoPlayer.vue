@@ -55,9 +55,9 @@
         </select>
       </div>
     </div>
-    <div v-if="currentVideoInfo.externalAudioPreparing" class="audio-preparing">
+    <div v-if="audioPreparingVisible" class="audio-preparing">
       <span class="audio-preparing-spinner" aria-hidden="true"></span>
-      <span>正在准备兼容音频</span>
+      <span>{{ audioPreparingMessage }}</span>
       <span v-if="audioPreparingProgressText" class="audio-preparing-progress">
         {{ audioPreparingProgressText }}
       </span>
@@ -107,12 +107,21 @@ export default {
       setCaptionCombined
     } = useVideoLibrary()
     const audioPreparingProgressText = computed(() => {
+      if (!currentVideoInfo.value.externalAudioPreparing) {
+        return ''
+      }
       const progress = Number(currentVideoInfo.value.externalAudioProgress)
       if (!Number.isFinite(progress)) {
         return ''
       }
       return `${Math.max(0, Math.min(100, Math.round(progress)))}%`
     })
+    const audioPreparingVisible = computed(() =>
+      Boolean(currentVideoInfo.value.externalAudioChecking || currentVideoInfo.value.externalAudioPreparing)
+    )
+    const audioPreparingMessage = computed(() =>
+      currentVideoInfo.value.externalAudioChecking ? '正在检查兼容音频' : '正在准备兼容音频'
+    )
     const secondaryCaptionTracks = computed(() =>
       supportedCaptionTracks.value.filter((track) => track.id !== captionSelection.value.primaryTrackId)
     )
@@ -425,7 +434,7 @@ export default {
         return
       }
 
-      if (videoInfo.externalAudioPreparing || videoInfo.externalAudioUrl) {
+      if (videoInfo.externalAudioChecking || videoInfo.externalAudioPreparing || videoInfo.externalAudioUrl) {
         videoElement.muted = true
       }
     }
@@ -614,6 +623,8 @@ export default {
     return {
       playerMountRef,
       currentVideoInfo,
+      audioPreparingVisible,
+      audioPreparingMessage,
       audioPreparingProgressText,
       captionSelection,
       supportedCaptionTracks,
