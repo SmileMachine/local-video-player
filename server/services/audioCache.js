@@ -10,6 +10,7 @@ import {
   needsCompatibleAudio,
   normalizeAudioTranscodeConfig,
 } from "../../shared/audioTranscode.js";
+import { buildConfiguredFileFingerprint } from "../utils/fileFingerprint.js";
 
 const inFlightJobs = new Map();
 
@@ -40,13 +41,11 @@ const getAudioInfo = async (filePath) => {
   };
 };
 
-const createCacheKey = ({ filePath, stat, audioInfo, output }) =>
+const createCacheKey = ({ fingerprint, audioInfo, output }) =>
   crypto
     .createHash("sha256")
     .update(JSON.stringify({
-      filePath,
-      size: stat.size,
-      mtimeMs: stat.mtimeMs,
+      fingerprint,
       audio: audioInfo,
       output,
     }))
@@ -69,7 +68,7 @@ const buildDescriptor = async (filePath) => {
     };
   }
 
-  const stat = fs.statSync(filePath);
+  const fingerprint = await buildConfiguredFileFingerprint(filePath);
   const outputChannels = chooseOutputChannels({
     sourceChannels: audioInfo?.channels,
     maxChannels: transcodeConfig.maxChannels,
@@ -84,7 +83,7 @@ const buildDescriptor = async (filePath) => {
     channels: outputChannels,
     bitrate: formatBitrate(outputBitrate),
   };
-  const key = createCacheKey({ filePath, stat, audioInfo, output });
+  const key = createCacheKey({ fingerprint, audioInfo, output });
   const cacheDir = path.resolve(transcodeConfig.cacheDir);
   const outputPath = path.join(cacheDir, `${key}.m4a`);
 

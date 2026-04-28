@@ -103,6 +103,29 @@
             </div>
 
             <div class="setting-section">
+              <h4>缓存摘要</h4>
+              <div class="input-group">
+                <label>摘要模式:</label>
+                <select v-model="localConfig.cacheFingerprint.mode" class="input-select">
+                  <option value="stat">文件状态</option>
+                  <option value="sampled">文件状态 + 头尾样本</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>样本字节数:</label>
+                <input
+                  v-model.number="localConfig.cacheFingerprint.sampleBytes"
+                  type="number"
+                  min="4096"
+                  step="4096"
+                  class="input-number"
+                  :disabled="localConfig.cacheFingerprint.mode !== 'sampled'"
+                />
+              </div>
+              <p class="setting-note">文件状态模式不会读取文件内容；样本模式会在构造缓存 key 时读取文件头尾片段。</p>
+            </div>
+
+            <div class="setting-section">
               <h4>音频兼容</h4>
               <label class="checkbox-label">
                 <input type="checkbox" v-model="localConfig.audioTranscode.enabled" />
@@ -201,6 +224,10 @@ export default {
         maxBitrate: '384k',
         maxChannels: 2
       },
+      cacheFingerprint: {
+        mode: 'stat',
+        sampleBytes: 1048576
+      },
       videoPaths: []
     })
 
@@ -231,6 +258,10 @@ export default {
             codec: config.audioTranscode?.codec || 'aac',
             maxBitrate: config.audioTranscode?.maxBitrate || '384k',
             maxChannels: config.audioTranscode?.maxChannels || 2
+          },
+          cacheFingerprint: {
+            mode: config.cacheFingerprint?.mode === 'sampled' ? 'sampled' : 'stat',
+            sampleBytes: config.cacheFingerprint?.sampleBytes || 1048576
           },
           videoPaths: config.videoPaths || []
         })

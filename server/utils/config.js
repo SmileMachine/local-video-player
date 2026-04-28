@@ -15,6 +15,10 @@ const DEFAULT_CONFIG = {
     maxBitrate: "384k",
     maxChannels: 2,
   },
+  cacheFingerprint: {
+    mode: "stat",
+    sampleBytes: 1048576,
+  },
   videoPaths: [
   ],
 };

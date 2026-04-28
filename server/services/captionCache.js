@@ -4,6 +4,7 @@ import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { buildEmbeddedCaptionTracks } from "../../shared/captionTracks.js";
 import { combineVtt } from "../../shared/vtt.js";
+import { buildConfiguredFileFingerprint } from "../utils/fileFingerprint.js";
 
 const CAPTION_CACHE_DIR = "cache/captions";
 const inFlightJobs = new Map();
@@ -24,15 +25,6 @@ const getCacheDir = () => path.resolve(CAPTION_CACHE_DIR);
 
 const hashObject = (value) =>
   crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
-
-const getFileFingerprint = async (filePath) => {
-  const stat = await fs.promises.stat(filePath);
-  return {
-    filePath,
-    size: stat.size,
-    mtimeMs: stat.mtimeMs,
-  };
-};
 
 const normalizeExternalLanguage = (value) => {
   const normalized = String(value || "")
@@ -160,8 +152,8 @@ const createSingleCacheDescriptor = async (videoPath, track) => {
   const sourcePath = track.source === "external" ? track.filePath : videoPath;
   const key = hashObject({
     type: "caption-single-v1",
-    video: await getFileFingerprint(videoPath),
-    source: await getFileFingerprint(sourcePath),
+    video: await buildConfiguredFileFingerprint(videoPath),
+    source: await buildConfiguredFileFingerprint(sourcePath),
     track: {
       id: track.id,
       source: track.source,
@@ -184,18 +176,18 @@ const createCombinedCacheDescriptor = async (videoPath, primaryTrack, secondaryT
   const secondarySourcePath = secondaryTrack.source === "external" ? secondaryTrack.filePath : videoPath;
   const key = hashObject({
     type: "caption-combined-v1",
-    video: await getFileFingerprint(videoPath),
+    video: await buildConfiguredFileFingerprint(videoPath),
     primary: {
       id: primaryTrack.id,
       source: primaryTrack.source,
-      fingerprint: await getFileFingerprint(primarySourcePath),
+      fingerprint: await buildConfiguredFileFingerprint(primarySourcePath),
       format: primaryTrack.format,
       codec: primaryTrack.codec,
     },
     secondary: {
       id: secondaryTrack.id,
       source: secondaryTrack.source,
-      fingerprint: await getFileFingerprint(secondarySourcePath),
+      fingerprint: await buildConfiguredFileFingerprint(secondarySourcePath),
       format: secondaryTrack.format,
       codec: secondaryTrack.codec,
     },

@@ -91,6 +91,31 @@ router.put("/config", async (req, res) => {
       }
     }
 
+    if (newConfig.cacheFingerprint !== undefined) {
+      const cacheFingerprint = newConfig.cacheFingerprint;
+      if (typeof cacheFingerprint !== 'object' || cacheFingerprint === null || Array.isArray(cacheFingerprint)) {
+        logger.error("Invalid cacheFingerprint value:", cacheFingerprint);
+        return res.status(400).json({ error: "cacheFingerprint must be an object" });
+      }
+
+      if (
+        cacheFingerprint.mode !== undefined &&
+        cacheFingerprint.mode !== 'stat' &&
+        cacheFingerprint.mode !== 'sampled'
+      ) {
+        logger.error("Invalid cacheFingerprint.mode value:", cacheFingerprint.mode);
+        return res.status(400).json({ error: "cacheFingerprint.mode must be stat or sampled" });
+      }
+
+      if (cacheFingerprint.sampleBytes !== undefined) {
+        const sampleBytes = Number.parseInt(cacheFingerprint.sampleBytes, 10);
+        if (!Number.isFinite(sampleBytes) || sampleBytes <= 0) {
+          logger.error("Invalid cacheFingerprint.sampleBytes value:", cacheFingerprint.sampleBytes);
+          return res.status(400).json({ error: "cacheFingerprint.sampleBytes must be a positive number" });
+        }
+      }
+    }
+
     // Write to config file
     fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), "utf8");
     logger.info("Config saved successfully");
